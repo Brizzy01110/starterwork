@@ -38,11 +38,10 @@ export function formatRelativeTime(isoString) {
   return formatDate(isoString);
 }
 
-let woCounter = 428;
 export function generateWorkOrderId() {
-  const id = `WO-2024-00${woCounter}`;
-  woCounter++;
-  return id;
+  const year = new Date().getFullYear();
+  const random = Math.floor(10000 + Math.random() * 90000);
+  return `WO-${year}-${random}`;
 }
 
 export function generateNoteId() {
