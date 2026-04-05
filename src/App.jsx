@@ -15,7 +15,7 @@ import { exportToCSV } from './utils/formatters.js';
 import { Plus, Download, TableIcon, LayoutGrid, BarChart2 } from 'lucide-react';
 
 export default function App() {
-  const { workOrders, createWorkOrder, updateWorkOrder, addNote, bulkUpdate, resetToMockData } = useWorkOrders();
+  const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, bulkUpdate, resetToMockData } = useWorkOrders();
   const {
     filters, updateFilter, resetFilters, sortKey, sortDir, toggleSort,
     filteredAndSorted, activeFilterCount, presets, savePreset, loadPreset, deletePreset,
@@ -23,18 +23,11 @@ export default function App() {
 
   const { toasts, addToast, dismissToast } = useToast();
 
-  const [loading, setLoading] = useState(true);
-  const [activeView, setActiveView] = useState('table'); // 'table' | 'board' | 'charts'
+  const [activeView, setActiveView] = useState('table');
   const [selectedWO, setSelectedWO] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Simulate initial load
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(t);
-  }, []);
 
   // Keep selectedWO in sync with latest data
   useEffect(() => {
@@ -66,11 +59,11 @@ export default function App() {
   }, [bulkUpdate, addToast]);
 
   const handleReset = useCallback(() => {
-    if (window.confirm('Reset all work orders to demo data? This cannot be undone.')) {
+    if (window.confirm('Clear all work orders? This cannot be undone.')) {
       resetToMockData();
       setSelectedIds(new Set());
       setSelectedWO(null);
-      addToast('Data reset to demo defaults.', 'info');
+      addToast('All work orders cleared.', 'info');
     }
   }, [resetToMockData, addToast]);
 
@@ -115,7 +108,6 @@ export default function App() {
           onClose={() => setSidebarOpen(false)}
         />
 
-        {/* Main content */}
         <main
           style={{
             flex: 1,
@@ -127,10 +119,8 @@ export default function App() {
             minWidth: 0,
           }}
         >
-          {/* Stats bar */}
-          {!loading && <StatsSummaryBar workOrders={workOrders} />}
+          {!dbLoading && <StatsSummaryBar workOrders={workOrders} />}
 
-          {/* Page header */}
           <div
             style={{
               display: 'flex',
@@ -141,7 +131,6 @@ export default function App() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {/* View toggle */}
               <div
                 style={{
                   display: 'flex',
@@ -187,7 +176,6 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              {/* Export CSV */}
               <button
                 onClick={() => { exportToCSV(filteredAndSorted); addToast('CSV exported.', 'success'); }}
                 style={{
@@ -212,7 +200,6 @@ export default function App() {
                 <span className="view-label">Export CSV</span>
               </button>
 
-              {/* Create WO */}
               <button
                 onClick={() => setShowCreateModal(true)}
                 style={{
@@ -239,10 +226,9 @@ export default function App() {
             </div>
           </div>
 
-          {/* View-specific content */}
           {activeView === 'table' && (
             <>
-              {!loading && (
+              {!dbLoading && (
                 <FilterBar
                   filters={filters}
                   updateFilter={updateFilter}
@@ -258,7 +244,7 @@ export default function App() {
               )}
               <WorkOrderTable
                 workOrders={filteredAndSorted}
-                loading={loading}
+                loading={dbLoading}
                 sortKey={sortKey}
                 sortDir={sortDir}
                 toggleSort={toggleSort}
@@ -284,7 +270,6 @@ export default function App() {
         </main>
       </div>
 
-      {/* Detail panel */}
       {selectedWO && (
         <WorkOrderDetailPanel
           workOrder={selectedWO}
@@ -295,7 +280,6 @@ export default function App() {
         />
       )}
 
-      {/* Create modal */}
       {showCreateModal && (
         <CreateWorkOrderModal
           onClose={() => setShowCreateModal(false)}
@@ -303,7 +287,6 @@ export default function App() {
         />
       )}
 
-      {/* Toasts */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       <style>{`

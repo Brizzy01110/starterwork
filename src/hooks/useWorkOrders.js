@@ -1,124 +1,152 @@
-import { useReducer, useEffect, useCallback } from 'react';
-import { mockWorkOrders } from '../data/mockWorkOrders.js';
+import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '../lib/supabase';
 import { generateWorkOrderId, generateNoteId } from '../utils/formatters.js';
 
-const STORAGE_KEY = 'fc-work-orders';
-
-function loadFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    // ignore parse errors
-  }
-  return null;
+// Map Supabase row (snake_case) -> app object (camelCase)
+function fromDb(row) {
+  return {
+    id: row.id,
+    machineId: row.machine_id,
+    machineType: row.machine_type,
+    issueTitle: row.issue_title,
+    problemDescription: row.problem_description,
+    priority: row.priority,
+    machineState: row.machine_state,
+    status: row.status,
+    assignedTech: row.assigned_tech,
+    estimatedResolution: row.estimated_resolution,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    notes: row.notes || [],
+    errorCodes: row.error_codes || [],
+  };
 }
 
-function saveToStorage(workOrders) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(workOrders));
-  } catch {
-    // ignore storage errors
-  }
-}
-
-function reducer(state, action) {
-  switch (action.type) {
-    case 'INIT':
-      return action.payload;
-
-    case 'CREATE': {
-      const newWO = {
-        id: generateWorkOrderId(),
-        ...action.payload,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        notes: [],
-        errorCodes: [],
-      };
-      return [newWO, ...state];
-    }
-
-    case 'UPDATE': {
-      return state.map((wo) =>
-        wo.id === action.id
-          ? { ...wo, ...action.payload, updatedAt: new Date().toISOString() }
-          : wo
-      );
-    }
-
-    case 'ADD_NOTE': {
-      const note = {
-        id: generateNoteId(),
-        author: action.author,
-        timestamp: new Date().toISOString(),
-        note: action.note,
-      };
-      return state.map((wo) =>
-        wo.id === action.id
-          ? { ...wo, notes: [...wo.notes, note], updatedAt: new Date().toISOString() }
-          : wo
-      );
-    }
-
-    case 'DELETE': {
-      return state.filter((wo) => wo.id !== action.id);
-    }
-
-    case 'BULK_UPDATE': {
-      const ids = new Set(action.ids);
-      return state.map((wo) =>
-        ids.has(wo.id)
-          ? { ...wo, ...action.payload, updatedAt: new Date().toISOString() }
-          : wo
-      );
-    }
-
-    default:
-      return state;
-  }
+// Map app object (camelCase) -> Supabase row (snake_case)
+function toDb(wo) {
+  return {
+    id: wo.id,
+    machine_id: wo.machineId,
+    machine_type: wo.machineType,
+    issue_title: wo.issueTitle,
+    problem_description: wo.problemDescription,
+    priority: wo.priority,
+    machine_state: wo.machineState,
+    status: wo.status,
+    assigned_tech: wo.assignedTech,
+    estimated_resolution: wo.estimatedResolution || null,
+    created_at: wo.createdAt,
+    updated_at: wo.updatedAt,
+    notes: wo.notes,
+    error_codes: wo.errorCodes,
+  };
 }
 
 export function useWorkOrders() {
-  const [workOrders, dispatch] = useReducer(reducer, []);
+  const [workOrders, setWorkOrders] = useState([]);
+  const [dbLoading, setDbLoading] = useState(true);
 
+  // Initial fetch
   useEffect(() => {
-    const stored = loadFromStorage();
-    dispatch({ type: 'INIT', payload: stored || mockWorkOrders });
+    supabase
+      .from('work_orders')
+      .select('*')
+      .order('updated_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          setWorkOrders(data.map(fromDb));
+        }
+        setDbLoading(false);
+      });
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('work_orders_changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'work_orders' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setWorkOrders((prev) => [fromDb(payload.new), ...prev]);
+          } else if (payload.eventType === 'UPDATE') {
+            setWorkOrders((prev) =>
+              prev.map((wo) => (wo.id === payload.new.id ? fromDb(payload.new) : wo))
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setWorkOrders((prev) => prev.filter((wo) => wo.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(channel);
   }, []);
 
-  useEffect(() => {
-    if (workOrders.length > 0) {
-      saveToStorage(workOrders);
-    }
+  const createWorkOrder = useCallback(async (data) => {
+    const now = new Date().toISOString();
+    const newWO = {
+      id: generateWorkOrderId(),
+      ...data,
+      createdAt: now,
+      updatedAt: now,
+      notes: [],
+      errorCodes: [],
+    };
+    await supabase.from('work_orders').insert(toDb(newWO));
+  }, []);
+
+  const updateWorkOrder = useCallback(async (id, payload) => {
+    const dbPayload = {};
+    if (payload.machineId !== undefined) dbPayload.machine_id = payload.machineId;
+    if (payload.machineType !== undefined) dbPayload.machine_type = payload.machineType;
+    if (payload.issueTitle !== undefined) dbPayload.issue_title = payload.issueTitle;
+    if (payload.problemDescription !== undefined) dbPayload.problem_description = payload.problemDescription;
+    if (payload.priority !== undefined) dbPayload.priority = payload.priority;
+    if (payload.machineState !== undefined) dbPayload.machine_state = payload.machineState;
+    if (payload.status !== undefined) dbPayload.status = payload.status;
+    if (payload.assignedTech !== undefined) dbPayload.assigned_tech = payload.assignedTech;
+    if (payload.estimatedResolution !== undefined) dbPayload.estimated_resolution = payload.estimatedResolution;
+    dbPayload.updated_at = new Date().toISOString();
+    await supabase.from('work_orders').update(dbPayload).eq('id', id);
+  }, []);
+
+  const addNote = useCallback(async (id, noteText, author = 'Technician') => {
+    const wo = workOrders.find((w) => w.id === id);
+    if (!wo) return;
+    const newNote = {
+      id: generateNoteId(),
+      author,
+      timestamp: new Date().toISOString(),
+      note: noteText,
+    };
+    const updatedNotes = [...wo.notes, newNote];
+    await supabase
+      .from('work_orders')
+      .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
+      .eq('id', id);
   }, [workOrders]);
 
-  const createWorkOrder = useCallback((data) => {
-    dispatch({ type: 'CREATE', payload: data });
+  const deleteWorkOrder = useCallback(async (id) => {
+    await supabase.from('work_orders').delete().eq('id', id);
   }, []);
 
-  const updateWorkOrder = useCallback((id, payload) => {
-    dispatch({ type: 'UPDATE', id, payload });
-  }, []);
-
-  const addNote = useCallback((id, note, author = 'Technician') => {
-    dispatch({ type: 'ADD_NOTE', id, note, author });
-  }, []);
-
-  const deleteWorkOrder = useCallback((id) => {
-    dispatch({ type: 'DELETE', id });
-  }, []);
-
-  const bulkUpdate = useCallback((ids, payload) => {
-    dispatch({ type: 'BULK_UPDATE', ids, payload });
+  const bulkUpdate = useCallback(async (ids, payload) => {
+    const dbPayload = {};
+    if (payload.status !== undefined) dbPayload.status = payload.status;
+    if (payload.priority !== undefined) dbPayload.priority = payload.priority;
+    if (payload.machineState !== undefined) dbPayload.machine_state = payload.machineState;
+    if (payload.assignedTech !== undefined) dbPayload.assigned_tech = payload.assignedTech;
+    dbPayload.updated_at = new Date().toISOString();
+    await supabase.from('work_orders').update(dbPayload).in('id', ids);
   }, []);
 
   const resetToMockData = useCallback(() => {
-    dispatch({ type: 'INIT', payload: mockWorkOrders });
+    // No-op — mock data removed; reset is not needed with a real DB
   }, []);
 
   return {
     workOrders,
+    dbLoading,
     createWorkOrder,
     updateWorkOrder,
     addNote,
