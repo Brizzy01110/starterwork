@@ -7,6 +7,7 @@ export const TECHNICIANS = [
   'Priya M.',
   'Carlos V.',
   'Lena H.',
+  'Grebryson Gabriel',
 ];
 
 export const MACHINE_TYPES = [

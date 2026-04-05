@@ -53,7 +53,10 @@ export function useWorkOrders() {
       .select('*')
       .order('updated_at', { ascending: false })
       .then(({ data, error }) => {
-        if (!error && data) {
+        if (error) {
+          console.error('Supabase fetch error:', error.message);
+        }
+        if (data) {
           setWorkOrders(data.map(fromDb));
         }
         setDbLoading(false);
@@ -92,7 +95,8 @@ export function useWorkOrders() {
       notes: [],
       errorCodes: [],
     };
-    await supabase.from('work_orders').insert(toDb(newWO));
+    const { error } = await supabase.from('work_orders').insert(toDb(newWO));
+    if (error) console.error('Supabase insert error:', error.message);
   }, []);
 
   const updateWorkOrder = useCallback(async (id, payload) => {
