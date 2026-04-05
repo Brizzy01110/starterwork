@@ -37,9 +37,13 @@ export default function App() {
     }
   }, [workOrders]);
 
-  const handleCreate = useCallback((data) => {
-    createWorkOrder(data);
-    addToast(`Work order created: ${data.issueTitle}`, 'success');
+  const handleCreate = useCallback(async (data) => {
+    const { error } = await createWorkOrder(data);
+    if (error) {
+      addToast(`Failed to create work order: ${error.message}`, 'error');
+    } else {
+      addToast(`Work order created: ${data.issueTitle}`, 'success');
+    }
   }, [createWorkOrder, addToast]);
 
   const handleUpdate = useCallback((id, payload) => {

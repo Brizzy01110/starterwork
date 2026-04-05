@@ -96,7 +96,11 @@ export function useWorkOrders() {
       errorCodes: [],
     };
     const { error } = await supabase.from('work_orders').insert(toDb(newWO));
-    if (error) console.error('Supabase insert error:', error.message);
+    if (error) {
+      console.error('Supabase insert error:', error.message);
+      return { error };
+    }
+    return { error: null };
   }, []);
 
   const updateWorkOrder = useCallback(async (id, payload) => {
