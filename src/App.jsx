@@ -1,0 +1,316 @@
+import { useState, useEffect, useCallback } from 'react';
+import Header from './components/layout/Header.jsx';
+import Sidebar from './components/layout/Sidebar.jsx';
+import StatsSummaryBar from './components/ui/StatsSummaryBar.jsx';
+import FilterBar from './components/ui/FilterBar.jsx';
+import WorkOrderTable from './components/workorders/WorkOrderTable.jsx';
+import WorkOrderDetailPanel from './components/workorders/WorkOrderDetailPanel.jsx';
+import CreateWorkOrderModal from './components/workorders/CreateWorkOrderModal.jsx';
+import MachineStateBoard from './components/board/MachineStateBoard.jsx';
+import AnalyticsView from './components/ui/AnalyticsView.jsx';
+import { ToastContainer, useToast } from './components/ui/Toast.jsx';
+import { useWorkOrders } from './hooks/useWorkOrders.js';
+import { useFilters } from './hooks/useFilters.js';
+import { exportToCSV } from './utils/formatters.js';
+import { Plus, Download, TableIcon, LayoutGrid, BarChart2 } from 'lucide-react';
+
+export default function App() {
+  const { workOrders, createWorkOrder, updateWorkOrder, addNote, bulkUpdate, resetToMockData } = useWorkOrders();
+  const {
+    filters, updateFilter, resetFilters, sortKey, sortDir, toggleSort,
+    filteredAndSorted, activeFilterCount, presets, savePreset, loadPreset, deletePreset,
+  } = useFilters(workOrders);
+
+  const { toasts, addToast, dismissToast } = useToast();
+
+  const [loading, setLoading] = useState(true);
+  const [activeView, setActiveView] = useState('table'); // 'table' | 'board' | 'charts'
+  const [selectedWO, setSelectedWO] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Simulate initial load
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Keep selectedWO in sync with latest data
+  useEffect(() => {
+    if (selectedWO) {
+      const updated = workOrders.find((wo) => wo.id === selectedWO.id);
+      if (updated) setSelectedWO(updated);
+    }
+  }, [workOrders]);
+
+  const handleCreate = useCallback((data) => {
+    createWorkOrder(data);
+    addToast(`Work order created: ${data.issueTitle}`, 'success');
+  }, [createWorkOrder, addToast]);
+
+  const handleUpdate = useCallback((id, payload) => {
+    updateWorkOrder(id, payload);
+    addToast('Work order updated.', 'success');
+  }, [updateWorkOrder, addToast]);
+
+  const handleAddNote = useCallback((id, note, author) => {
+    addNote(id, note, author);
+    addToast('Note added.', 'success');
+  }, [addNote, addToast]);
+
+  const handleBulkUpdate = useCallback((ids, payload) => {
+    bulkUpdate(ids, payload);
+    setSelectedIds(new Set());
+    addToast(`${ids.length} work orders updated.`, 'success');
+  }, [bulkUpdate, addToast]);
+
+  const handleReset = useCallback(() => {
+    if (window.confirm('Reset all work orders to demo data? This cannot be undone.')) {
+      resetToMockData();
+      setSelectedIds(new Set());
+      setSelectedWO(null);
+      addToast('Data reset to demo defaults.', 'info');
+    }
+  }, [resetToMockData, addToast]);
+
+  function handleSelectRow(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleSelectAll(ids) {
+    if (selectedIds.size === ids.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(ids));
+    }
+  }
+
+  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2 };
+  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics' };
+
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        overflow: 'hidden',
+        background: 'var(--bg-primary)',
+      }}
+    >
+      <Header onMenuToggle={() => setSidebarOpen((o) => !o)} menuOpen={sidebarOpen} />
+
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <Sidebar
+          activeView={activeView}
+          onViewChange={setActiveView}
+          onReset={handleReset}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+
+        {/* Main content */}
+        <main
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+            minWidth: 0,
+          }}
+        >
+          {/* Stats bar */}
+          {!loading && <StatsSummaryBar workOrders={workOrders} />}
+
+          {/* Page header */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* View toggle */}
+              <div
+                style={{
+                  display: 'flex',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '7px',
+                  padding: '3px',
+                  gap: '2px',
+                }}
+                role="tablist"
+                aria-label="View selector"
+              >
+                {['table', 'board', 'charts'].map((view) => {
+                  const Icon = VIEW_ICONS[view];
+                  const active = activeView === view;
+                  return (
+                    <button
+                      key={view}
+                      onClick={() => setActiveView(view)}
+                      role="tab"
+                      aria-selected={active}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        padding: '6px 10px',
+                        borderRadius: '5px',
+                        background: active ? '#FF9900' : 'none',
+                        border: 'none',
+                        color: active ? '#000' : 'var(--text-secondary)',
+                        fontSize: '0.78rem',
+                        fontWeight: active ? 700 : 400,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <Icon size={13} />
+                      <span className="view-label">{VIEW_LABELS[view]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {/* Export CSV */}
+              <button
+                onClick={() => { exportToCSV(filteredAndSorted); addToast('CSV exported.', 'success'); }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 12px',
+                  background: 'var(--bg-elevated)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '6px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+                aria-label="Export to CSV"
+              >
+                <Download size={13} />
+                <span className="view-label">Export CSV</span>
+              </button>
+
+              {/* Create WO */}
+              <button
+                onClick={() => setShowCreateModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  background: '#FF9900',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: '#000',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#e68900')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#FF9900')}
+                aria-label="Create new work order"
+              >
+                <Plus size={15} />
+                New WO
+              </button>
+            </div>
+          </div>
+
+          {/* View-specific content */}
+          {activeView === 'table' && (
+            <>
+              {!loading && (
+                <FilterBar
+                  filters={filters}
+                  updateFilter={updateFilter}
+                  resetFilters={resetFilters}
+                  activeFilterCount={activeFilterCount}
+                  resultCount={filteredAndSorted.length}
+                  totalCount={workOrders.length}
+                  presets={presets}
+                  savePreset={savePreset}
+                  loadPreset={loadPreset}
+                  deletePreset={deletePreset}
+                />
+              )}
+              <WorkOrderTable
+                workOrders={filteredAndSorted}
+                loading={loading}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                toggleSort={toggleSort}
+                onRowClick={(wo) => setSelectedWO(wo)}
+                selectedIds={selectedIds}
+                onSelectRow={handleSelectRow}
+                onSelectAll={handleSelectAll}
+                onBulkUpdate={handleBulkUpdate}
+              />
+            </>
+          )}
+
+          {activeView === 'board' && (
+            <MachineStateBoard
+              workOrders={workOrders}
+              onCardClick={(wo) => setSelectedWO(wo)}
+            />
+          )}
+
+          {activeView === 'charts' && (
+            <AnalyticsView workOrders={workOrders} />
+          )}
+        </main>
+      </div>
+
+      {/* Detail panel */}
+      {selectedWO && (
+        <WorkOrderDetailPanel
+          workOrder={selectedWO}
+          onClose={() => setSelectedWO(null)}
+          onUpdate={handleUpdate}
+          onAddNote={handleAddNote}
+          onToast={addToast}
+        />
+      )}
+
+      {/* Create modal */}
+      {showCreateModal && (
+        <CreateWorkOrderModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreate}
+        />
+      )}
+
+      {/* Toasts */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      <style>{`
+        @media (max-width: 640px) {
+          .view-label { display: none; }
+        }
+      `}</style>
+    </div>
+  );
+}
