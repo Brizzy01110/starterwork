@@ -11,11 +11,13 @@ import AnalyticsView from './components/ui/AnalyticsView.jsx';
 import { ToastContainer, useToast } from './components/ui/Toast.jsx';
 import { useWorkOrders } from './hooks/useWorkOrders.js';
 import { useFilters } from './hooks/useFilters.js';
+import { useMachineSpecs } from './hooks/useMachineSpecs.js';
 import { exportToCSV } from './utils/formatters.js';
 import { Plus, Download, TableIcon, LayoutGrid, BarChart2 } from 'lucide-react';
 
 export default function App() {
   const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
+  const { upsertSpec, getSpec } = useMachineSpecs();
   const {
     filters, updateFilter, resetFilters, sortKey, sortDir, toggleSort,
     filteredAndSorted, activeFilterCount, presets, savePreset, loadPreset, deletePreset,
@@ -282,10 +284,12 @@ export default function App() {
         <WorkOrderDetailPanel
           workOrder={selectedWO}
           allWorkOrders={workOrders}
+          machineSpec={selectedWO ? getSpec(selectedWO.machineId) : null}
           onClose={() => setSelectedWO(null)}
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onAddNote={handleAddNote}
+          onSaveSpec={upsertSpec}
           onToast={addToast}
         />
       )}

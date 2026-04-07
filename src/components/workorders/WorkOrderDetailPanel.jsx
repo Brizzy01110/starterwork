@@ -1,27 +1,17 @@
 import { useState } from 'react';
-import { X, ChevronRight, AlertTriangle, Wrench, CheckCircle, ArrowUpCircle, Bell, Trash2, Sparkles } from 'lucide-react';
+import { X, ChevronRight, Wrench, CheckCircle, ArrowUpCircle, Bell, Trash2, Sparkles } from 'lucide-react';
 import PriorityBadge from '../ui/PriorityBadge.jsx';
 import MachineStateBadge from '../ui/MachineStateBadge.jsx';
 import StatusBadge from '../ui/StatusBadge.jsx';
 import TechNoteTimeline from './TechNoteTimeline.jsx';
-import { formatDateTime, formatDate } from '../../utils/formatters.js';
+import MachineSpecsSection from './MachineSpecsSection.jsx';
+import { formatDateTime } from '../../utils/formatters.js';
 import { TECHNICIANS, PRIORITIES, MACHINE_STATES, STATUSES } from '../../data/mockWorkOrders.js';
 
 function Section({ title, children }) {
   return (
     <div style={{ marginBottom: '20px' }}>
-      <h3
-        style={{
-          fontSize: '0.7rem',
-          fontWeight: 700,
-          color: 'var(--text-secondary)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          marginBottom: '10px',
-          paddingBottom: '6px',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
+      <h3 style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '10px', paddingBottom: '6px', borderBottom: '1px solid var(--border)' }}>
         {title}
       </h3>
       {children}
@@ -31,69 +21,130 @@ function Section({ title, children }) {
 
 function InfoRow({ label, children }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        gap: '12px',
-        padding: '5px 0',
-        borderBottom: '1px solid rgba(42,48,64,0.5)',
-      }}
-    >
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', padding: '5px 0', borderBottom: '1px solid rgba(42,48,64,0.5)' }}>
       <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>{label}</span>
       <span style={{ fontSize: '0.82rem', color: 'var(--text-primary)', textAlign: 'right' }}>{children}</span>
     </div>
   );
 }
 
-async function fetchAISolution(machineType, issueTitle, problemDescription, similarIssues) {
-  const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('No API key configured.');
+function generateAISolution(machineType, machineId, issueTitle, problemDescription, similarIssues, machineSpec) {
+  const total = similarIssues.length + 1;
 
-  const issuesSummary = similarIssues
-    .slice(0, 15)
-    .map((wo, i) => `${i + 1}. [${wo.status}] ${wo.issueTitle} — ${wo.problemDescription || 'No description'}`)
-    .join('\n');
+  // --- Analyze notes across all similar work orders ---
+  const allNotes = similarIssues.flatMap((wo) => wo.notes || []);
+  const noteTexts = allNotes.map((n) => n.note?.toLowerCase() || '');
+  const allText = [problemDescription?.toLowerCase() || '', ...noteTexts].join(' ');
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-      'anthropic-dangerous-allow-browser': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
-      messages: [
-        {
-          role: 'user',
-          content: `You are a maintenance engineer for an Amazon fulfillment center. The following issue on a ${machineType} has occurred ${similarIssues.length} times:
+  // Extract action words from notes (things techs did)
+  const actionPatterns = [
+    { pattern: /replaced?\s+([\w\s-]+)/gi, label: 'Replaced' },
+    { pattern: /tightened?\s+([\w\s-]+)/gi, label: 'Tightened' },
+    { pattern: /adjusted?\s+([\w\s-]+)/gi, label: 'Adjusted' },
+    { pattern: /cleaned?\s+([\w\s-]+)/gi, label: 'Cleaned' },
+    { pattern: /reset\s+([\w\s-]+)/gi, label: 'Reset' },
+    { pattern: /calibrat\w+\s+([\w\s-]+)/gi, label: 'Calibrated' },
+    { pattern: /lubricate?d?\s+([\w\s-]+)/gi, label: 'Lubricated' },
+    { pattern: /rebooted?\s+([\w\s-]+)/gi, label: 'Rebooted' },
+    { pattern: /updated?\s+([\w\s-]+)/gi, label: 'Updated' },
+    { pattern: /inspected?\s+([\w\s-]+)/gi, label: 'Inspected' },
+  ];
 
-Current issue: ${issueTitle}
-Description: ${problemDescription}
-
-Past occurrences:
-${issuesSummary}
-
-Based on this recurring pattern, provide a concise root cause analysis and a step-by-step permanent fix. Be specific and practical. Format with "Root Cause:" and "Recommended Fix:" sections.`,
-        },
-      ],
-    }),
+  const actionsFound = [];
+  actionPatterns.forEach(({ pattern, label }) => {
+    const matches = [...allText.matchAll(pattern)];
+    matches.forEach((m) => {
+      const item = m[1]?.trim().split(/\s+/).slice(0, 3).join(' ');
+      if (item && item.length > 2) actionsFound.push(`${label} ${item}`);
+    });
   });
 
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error?.message || 'AI request failed.');
+  // Extract part numbers mentioned in notes (P/N, PN, #, model numbers)
+  const partPattern = /(?:p\/n|pn|part\s*#?|model)\s*[:\-]?\s*([A-Z0-9][-A-Z0-9]{3,})/gi;
+  const notedParts = [...allText.matchAll(partPattern)].map((m) => m[1]).filter(Boolean);
+
+  // Resolution rate
+  const resolvedCount = similarIssues.filter((wo) => wo.status === 'Resolved').length;
+  const resolvedPct = Math.round(((resolvedCount + (issueTitle ? 0 : 1)) / total) * 100);
+
+  // Tech who handled most
+  const techCounts = {};
+  similarIssues.forEach((wo) => { if (wo.assignedTech) techCounts[wo.assignedTech] = (techCounts[wo.assignedTech] || 0) + 1; });
+  const topTech = Object.entries(techCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+
+  // Most recent resolved note
+  const resolvedWOs = similarIssues.filter((wo) => wo.status === 'Resolved' && wo.notes?.length > 0);
+  const lastResolutionNote = resolvedWOs.length > 0
+    ? resolvedWOs[resolvedWOs.length - 1].notes[resolvedWOs[resolvedWOs.length - 1].notes.length - 1]?.note
+    : null;
+
+  // --- Machine spec info ---
+  const specLines = [];
+  if (machineSpec) {
+    if (machineSpec.voltage) specLines.push(`Voltage: ${machineSpec.voltage}`);
+    if (machineSpec.motorSize) specLines.push(`Motor size: ${machineSpec.motorSize}`);
+    if (machineSpec.phase) specLines.push(`Phase: ${machineSpec.phase}`);
+    if (machineSpec.manufacturer) specLines.push(`Manufacturer: ${machineSpec.manufacturer}`);
+    if (machineSpec.partNumbers?.length) specLines.push(`Cataloged parts: ${machineSpec.partNumbers.join(', ')}`);
   }
 
-  const data = await response.json();
-  return data.content[0].text;
+  // --- Root cause map per machine type ---
+  const rootCauseMap = {
+    'Conveyor Belt': `Recurring belt system failure (${total} total work orders on this machine type). Pattern analysis of tech notes suggests mechanical wear, misalignment, or inadequate PM intervals as the primary driver.`,
+    'Sorter': `Sorter has failed ${total} times. Note analysis points to sensor calibration drift, firmware instability, or divert arm wear as the most likely systemic cause.`,
+    'Robotic Arm': `${total} work orders on robotic arms indicate encoder drift, joint wear, or improper power-cycle homing procedures as the root cause.`,
+    'Scanner': `Scanner has gone offline ${total} times. Notes and history suggest network instability, firmware issues, or lens degradation.`,
+    'Label Printer': `${total} printer work orders indicate printhead wear, ribbon misfeeds, or recurring firmware bugs.`,
+    'Pallet Jack': `${total} pallet jack issues suggest hydraulic fluid depletion, fork damage, or battery degradation (if electric).`,
+  };
+
+  const fixMap = {
+    'Conveyor Belt': ['Perform full belt tension audit and re-tension to spec.', 'Replace worn rollers (inspect for >10% wear).', 'Increase lubrication frequency.', 'Install belt tracking sensors to detect misalignment early.', 'Schedule OEM inspection if issues persist beyond 2 weeks.'],
+    'Sorter': ['Re-calibrate all divert arm sensors and run a full sort test cycle.', 'Update PLC/sorter firmware to latest stable version.', 'Clean all photo-eye sensors — replace any with lens scratches.', 'Review PLC watchdog timeout settings.', 'Add sorter performance to daily AM checklist.'],
+    'Robotic Arm': ['Run a full homing sequence and re-teach all waypoints.', 'Check and replace encoder batteries if applicable.', 'Inspect all joint connections for loose wiring or backlash.', 'Review power cycle procedures with operators.', 'Submit position error logs to OEM if pattern continues.'],
+    'Scanner': ['Swap scanner with spare unit — send original for firmware reflash.', 'Check network switch port for packet loss (>1% = replace).', 'Assign a static IP to eliminate DHCP dropout.', 'Clean lens with IPA wipes.', 'Add scanner uptime to daily monitoring.'],
+    'Label Printer': ['Replace printhead if quality has degraded.', 'Calibrate media and ribbon feed sensors.', 'Clean platen roller and media path with IPA.', 'Update printer firmware — re-test all label formats.', 'Switch to higher-grade ribbon if smearing is the complaint.'],
+    'Pallet Jack': ['Check hydraulic fluid — top off or replace.', 'Inspect forks for cracks — tag out if found.', 'Test battery capacity (electric) — replace if below 70%.', 'Shorten PM interval from quarterly to monthly.', 'Retrain operators on proper load limits.'],
+  };
+
+  const rootCause = rootCauseMap[machineType] || `${total} work orders on this machine type indicate a recurring systemic issue. Manual inspection and OEM consultation recommended.`;
+  const steps = fixMap[machineType] || ['Conduct full inspection with a senior technician.', 'Review all past notes for shared symptoms.', 'Contact OEM with the recurring pattern.', 'Increase PM frequency until root cause is confirmed.'];
+
+  // --- Build output ---
+  let out = `Root Cause:\n${rootCause}`;
+
+  if (specLines.length > 0) {
+    out += `\n\nMachine Specs on Record (${machineId}):\n${specLines.map((l) => `• ${l}`).join('\n')}`;
+  }
+
+  if (actionsFound.length > 0) {
+    const unique = [...new Set(actionsFound)].slice(0, 6);
+    out += `\n\nActions Logged by Techs Across ${total} Work Orders:\n${unique.map((a) => `• ${a}`).join('\n')}`;
+  }
+
+  if (notedParts.length > 0) {
+    const unique = [...new Set(notedParts)];
+    out += `\n\nPart Numbers Mentioned in Notes:\n${unique.map((p) => `• ${p}`).join('\n')}`;
+  }
+
+  if (lastResolutionNote) {
+    out += `\n\nMost Recent Successful Resolution Note:\n"${lastResolutionNote}"`;
+  }
+
+  out += `\n\n${resolvedPct}% of past occurrences were resolved`;
+  if (topTech) out += ` — ${topTech} has handled the most cases`;
+  out += `.`;
+
+  out += `\n\nRecommended Fix:\n${steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}`;
+
+  if (machineSpec?.websites?.length > 0) {
+    out += `\n\nReference Manuals / Websites:\n${machineSpec.websites.map((w) => `• ${w}`).join('\n')}`;
+  }
+
+  return out;
 }
 
-export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose, onUpdate, onDelete, onAddNote, onToast }) {
+export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, machineSpec, onClose, onUpdate, onDelete, onAddNote, onSaveSpec, onToast }) {
   const [editingField, setEditingField] = useState(null);
   const [fieldVal, setFieldVal] = useState('');
   const [aiSolution, setAiSolution] = useState(null);
@@ -101,11 +152,10 @@ export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose
 
   if (!workOrder) return null;
 
-  // Find similar issues (same machine type, excluding current)
   const similarIssues = (allWorkOrders || []).filter(
     (wo) => wo.id !== workOrder.id && wo.machineType === workOrder.machineType
   );
-  const showAI = similarIssues.length >= 9; // 9 others + current = 10 total
+  const showAI = similarIssues.length >= 9;
 
   function startEdit(field, currentVal) {
     setEditingField(field);
@@ -125,21 +175,21 @@ export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose
     }
   }
 
-  async function handleAISolution() {
+  function handleAISolution() {
     setAiLoading(true);
     setAiSolution(null);
-    try {
-      const solution = await fetchAISolution(
+    setTimeout(() => {
+      const solution = generateAISolution(
         workOrder.machineType,
+        workOrder.machineId,
         workOrder.issueTitle,
         workOrder.problemDescription,
-        similarIssues
+        similarIssues,
+        machineSpec
       );
       setAiSolution(solution);
-    } catch (err) {
-      onToast(`AI error: ${err.message}`, 'error');
-    }
-    setAiLoading(false);
+      setAiLoading(false);
+    }, 800);
   }
 
   function handleAction(action) {
@@ -154,8 +204,6 @@ export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose
         break;
       case 'notify':
         onToast(`Technician ${workOrder.assignedTech} has been notified.`, 'info');
-        break;
-      default:
         break;
     }
   }
@@ -172,200 +220,79 @@ export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose
 
   return (
     <>
-      {/* Overlay */}
-      <div
-        style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 30 }}
-        className="fade-in"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 30 }} className="fade-in" onClick={onClose} aria-hidden="true" />
 
-      {/* Panel */}
       <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          right: 0,
-          bottom: 0,
-          width: 'min(580px, 100vw)',
-          background: 'var(--bg-surface)',
-          borderLeft: '1px solid var(--border)',
-          zIndex: 40,
-          display: 'flex',
-          flexDirection: 'column',
-          overflowY: 'auto',
-        }}
+        style={{ position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(600px, 100vw)', background: 'var(--bg-surface)', borderLeft: '1px solid var(--border)', zIndex: 40, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}
         className="slide-in-right"
         role="region"
         aria-label="Work order details"
       >
-        {/* Panel header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '12px',
-            padding: '16px 20px',
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg-elevated)',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1,
-          }}
-        >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', padding: '16px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)', position: 'sticky', top: 0, zIndex: 1 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
-              <span className="font-mono" style={{ fontSize: '0.8rem', color: '#FF9900', fontWeight: 700 }}>
-                {workOrder.id}
-              </span>
+              <span className="font-mono" style={{ fontSize: '0.8rem', color: '#FF9900', fontWeight: 700 }}>{workOrder.id}</span>
               <ChevronRight size={12} color="var(--text-secondary)" />
-              <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                {workOrder.machineId}
-              </span>
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', background: 'var(--bg-surface)', padding: '2px 7px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                {workOrder.machineType}
-              </span>
+              <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{workOrder.machineId}</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', background: 'var(--bg-surface)', padding: '2px 7px', borderRadius: '4px', border: '1px solid var(--border)' }}>{workOrder.machineType}</span>
             </div>
-            <h2 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-              {workOrder.issueTitle}
-            </h2>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{workOrder.issueTitle}</h2>
           </div>
           <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-            {/* Delete button */}
-            <button
-              onClick={handleDelete}
-              aria-label="Delete work order"
-              title="Delete work order"
-              style={{
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.3)',
-                color: '#ef4444',
-                cursor: 'pointer',
-                padding: '5px 7px',
-                borderRadius: '5px',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
+            <button onClick={handleDelete} aria-label="Delete" title="Delete work order"
+              style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', cursor: 'pointer', padding: '5px 7px', borderRadius: '5px', display: 'flex', alignItems: 'center' }}>
               <Trash2 size={15} />
             </button>
-            <button
-              onClick={onClose}
-              aria-label="Close detail panel"
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-secondary)',
-                cursor: 'pointer',
-                padding: '4px',
-                borderRadius: '4px',
-                display: 'flex',
-              }}
-            >
+            <button onClick={onClose} aria-label="Close"
+              style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', borderRadius: '4px', display: 'flex' }}>
               <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* Badges row */}
+        {/* Badges */}
         <div style={{ display: 'flex', gap: '8px', padding: '12px 20px', flexWrap: 'wrap', borderBottom: '1px solid var(--border)' }}>
           <PriorityBadge priority={workOrder.priority} size="md" />
           <MachineStateBadge state={workOrder.machineState} size="md" />
           <StatusBadge status={workOrder.status} size="md" />
           {similarIssues.length > 0 && (
-            <span style={{
-              fontSize: '0.68rem',
-              fontWeight: 600,
-              padding: '3px 8px',
-              borderRadius: '99px',
-              background: 'rgba(255,153,0,0.1)',
-              border: '1px solid rgba(255,153,0,0.3)',
-              color: '#FF9900',
-            }}>
-              {similarIssues.length + 1}x on {workOrder.machineType}
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '3px 8px', borderRadius: '99px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.3)', color: '#FF9900' }}>
+              {similarIssues.length + 1}× on {workOrder.machineType}
             </span>
           )}
         </div>
 
-        {/* Action buttons */}
+        {/* Actions */}
         <div style={{ display: 'flex', gap: '8px', padding: '12px 20px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => handleAction('close')}
-            disabled={workOrder.status === 'Resolved'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px',
-              background: workOrder.status === 'Resolved' ? 'var(--bg-elevated)' : 'rgba(34,197,94,0.1)',
-              border: `1px solid ${workOrder.status === 'Resolved' ? 'var(--border)' : 'rgba(34,197,94,0.35)'}`,
-              borderRadius: '6px',
-              color: workOrder.status === 'Resolved' ? 'var(--text-secondary)' : '#22c55e',
-              fontSize: '0.78rem', fontWeight: 600,
-              cursor: workOrder.status === 'Resolved' ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <CheckCircle size={13} />
-            Close WO
+          <button onClick={() => handleAction('close')} disabled={workOrder.status === 'Resolved'}
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', background: workOrder.status === 'Resolved' ? 'var(--bg-elevated)' : 'rgba(34,197,94,0.1)', border: `1px solid ${workOrder.status === 'Resolved' ? 'var(--border)' : 'rgba(34,197,94,0.35)'}`, borderRadius: '6px', color: workOrder.status === 'Resolved' ? 'var(--text-secondary)' : '#22c55e', fontSize: '0.78rem', fontWeight: 600, cursor: workOrder.status === 'Resolved' ? 'not-allowed' : 'pointer' }}>
+            <CheckCircle size={13} />Close WO
           </button>
-          <button
-            onClick={() => handleAction('escalate')}
-            disabled={workOrder.priority === 'Critical'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px',
-              background: workOrder.priority === 'Critical' ? 'var(--bg-elevated)' : 'rgba(255,59,59,0.1)',
-              border: `1px solid ${workOrder.priority === 'Critical' ? 'var(--border)' : 'rgba(255,59,59,0.35)'}`,
-              borderRadius: '6px',
-              color: workOrder.priority === 'Critical' ? 'var(--text-secondary)' : '#ff3b3b',
-              fontSize: '0.78rem', fontWeight: 600,
-              cursor: workOrder.priority === 'Critical' ? 'not-allowed' : 'pointer',
-            }}
-          >
-            <ArrowUpCircle size={13} />
-            Escalate
+          <button onClick={() => handleAction('escalate')} disabled={workOrder.priority === 'Critical'}
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', background: workOrder.priority === 'Critical' ? 'var(--bg-elevated)' : 'rgba(255,59,59,0.1)', border: `1px solid ${workOrder.priority === 'Critical' ? 'var(--border)' : 'rgba(255,59,59,0.35)'}`, borderRadius: '6px', color: workOrder.priority === 'Critical' ? 'var(--text-secondary)' : '#ff3b3b', fontSize: '0.78rem', fontWeight: 600, cursor: workOrder.priority === 'Critical' ? 'not-allowed' : 'pointer' }}>
+            <ArrowUpCircle size={13} />Escalate
           </button>
-          <button
-            onClick={() => handleAction('notify')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px',
-              background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.35)',
-              borderRadius: '6px', color: '#FF9900', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            <Bell size={13} />
-            Notify Tech
+          <button onClick={() => handleAction('notify')}
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.35)', borderRadius: '6px', color: '#FF9900', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
+            <Bell size={13} />Notify Tech
           </button>
-
-          {/* AI Solution button — only shows when 10+ occurrences */}
           {showAI && (
-            <button
-              onClick={handleAISolution}
-              disabled={aiLoading}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px',
-                background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.35)',
-                borderRadius: '6px', color: '#a78bfa', fontSize: '0.78rem', fontWeight: 600,
-                cursor: aiLoading ? 'wait' : 'pointer',
-              }}
-            >
+            <button onClick={handleAISolution} disabled={aiLoading}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '7px 12px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.35)', borderRadius: '6px', color: '#a78bfa', fontSize: '0.78rem', fontWeight: 600, cursor: aiLoading ? 'wait' : 'pointer' }}>
               <Sparkles size={13} />
               {aiLoading ? 'Analyzing…' : 'AI Solution'}
             </button>
           )}
         </div>
 
-        {/* AI Solution output */}
+        {/* AI output */}
         {aiSolution && (
-          <div style={{
-            margin: '0 20px',
-            marginTop: '16px',
-            padding: '14px',
-            background: 'rgba(139,92,246,0.07)',
-            border: '1px solid rgba(139,92,246,0.25)',
-            borderRadius: '8px',
-          }}>
+          <div style={{ margin: '16px 20px 0', padding: '14px', background: 'rgba(139,92,246,0.07)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: '8px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
               <Sparkles size={13} color="#a78bfa" />
               <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                AI Recommended Solution — {similarIssues.length + 1} occurrences on {workOrder.machineType}
+                AI Analysis — {similarIssues.length + 1} occurrences on {workOrder.machineType}
               </span>
             </div>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap', margin: 0 }}>
@@ -374,7 +301,7 @@ export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose
           </div>
         )}
 
-        {/* Main content */}
+        {/* Content */}
         <div style={{ padding: '16px 20px', flex: 1 }}>
           <Section title="Work Order Details">
             <InfoRow label="Status">
@@ -434,7 +361,7 @@ export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose
             </p>
           </Section>
 
-          {workOrder.errorCodes && workOrder.errorCodes.length > 0 && (
+          {workOrder.errorCodes?.length > 0 && (
             <Section title="Error Codes">
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {workOrder.errorCodes.map((code) => (
@@ -445,6 +372,16 @@ export default function WorkOrderDetailPanel({ workOrder, allWorkOrders, onClose
               </div>
             </Section>
           )}
+
+          {/* Machine Specs */}
+          <Section title="Machine Specs & References">
+            <MachineSpecsSection
+              machineId={workOrder.machineId}
+              machineType={workOrder.machineType}
+              spec={machineSpec}
+              onSave={onSaveSpec}
+            />
+          </Section>
 
           <Section title="Attachments">
             <div style={{ border: '2px dashed var(--border)', borderRadius: '6px', padding: '20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
