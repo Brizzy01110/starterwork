@@ -15,7 +15,7 @@ import { exportToCSV } from './utils/formatters.js';
 import { Plus, Download, TableIcon, LayoutGrid, BarChart2 } from 'lucide-react';
 
 export default function App() {
-  const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, bulkUpdate, resetToMockData } = useWorkOrders();
+  const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
   const {
     filters, updateFilter, resetFilters, sortKey, sortDir, toggleSort,
     filteredAndSorted, activeFilterCount, presets, savePreset, loadPreset, deletePreset,
@@ -55,6 +55,10 @@ export default function App() {
     addNote(id, note, author);
     addToast('Note added.', 'success');
   }, [addNote, addToast]);
+
+  const handleDelete = useCallback((id) => {
+    deleteWorkOrder(id);
+  }, [deleteWorkOrder]);
 
   const handleBulkUpdate = useCallback((ids, payload) => {
     bulkUpdate(ids, payload);
@@ -277,8 +281,10 @@ export default function App() {
       {selectedWO && (
         <WorkOrderDetailPanel
           workOrder={selectedWO}
+          allWorkOrders={workOrders}
           onClose={() => setSelectedWO(null)}
           onUpdate={handleUpdate}
+          onDelete={handleDelete}
           onAddNote={handleAddNote}
           onToast={addToast}
         />
