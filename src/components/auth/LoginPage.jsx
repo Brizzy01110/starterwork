@@ -60,10 +60,10 @@ export default function LoginPage() {
           </div>
           <div>
             <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              Starter Work
+              MT Services
             </div>
             <div style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
-              FULFILLMENT CENTER OPS
+              Data Logs
             </div>
           </div>
         </div>

@@ -12,12 +12,14 @@ import WiringDiagramsView from './components/ui/WiringDiagramsView.jsx';
 import SafetyView from './components/ui/SafetyView.jsx';
 import HistoryView from './components/workorders/HistoryView.jsx';
 import ProductAnalysisView from './components/ui/ProductAnalysisView.jsx';
+import AccidentsView from './components/ui/AccidentsView.jsx';
+import MEWPView from './components/ui/MEWPView.jsx';
 import { ToastContainer, useToast } from './components/ui/Toast.jsx';
 import { useWorkOrders } from './hooks/useWorkOrders.js';
 import { useFilters } from './hooks/useFilters.js';
 import { useMachineSpecs } from './hooks/useMachineSpecs.js';
 import { exportToCSV } from './utils/formatters.js';
-import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical } from 'lucide-react';
+import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift } from 'lucide-react';
 
 export default function App() {
   const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
@@ -34,6 +36,7 @@ export default function App() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState('overview');
   const [notifications, setNotifications] = useState([]);
 
   // Keep selectedWO in sync with latest data
@@ -103,8 +106,8 @@ export default function App() {
     }
   }
 
-  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical };
-  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects' };
+  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical, accidents: TriangleAlert, mewp: Forklift };
+  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects', accidents: 'Accidents', mewp: 'MEWP' };
 
   return (
     <div
@@ -121,6 +124,8 @@ export default function App() {
         menuOpen={sidebarOpen}
         notifications={notifications}
         onClearNotifications={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+        sidebarMode={sidebarMode}
+        onModeChange={setSidebarMode}
       />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -130,6 +135,7 @@ export default function App() {
           onReset={handleReset}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          sidebarMode={sidebarMode}
         />
 
         <main
@@ -167,7 +173,7 @@ export default function App() {
                 role="tablist"
                 aria-label="View selector"
               >
-                {['table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects'].map((view) => {
+                {['table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects', 'accidents', 'mewp'].map((view) => {
                   const Icon = VIEW_ICONS[view];
                   const active = activeView === view;
                   return (
@@ -306,6 +312,14 @@ export default function App() {
 
           {activeView === 'defects' && (
             <ProductAnalysisView workOrders={workOrders} />
+          )}
+
+          {activeView === 'accidents' && (
+            <AccidentsView />
+          )}
+
+          {activeView === 'mewp' && (
+            <MEWPView />
           )}
         </main>
       </div>

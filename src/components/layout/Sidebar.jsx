@@ -1,16 +1,35 @@
-import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap, ShieldCheck, History, FlaskConical } from 'lucide-react';
+import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift } from 'lucide-react';
 
-const NAV_ITEMS = [
-  { id: 'table', label: 'Work Orders', icon: LayoutList },
-  { id: 'board', label: 'Machine Board', icon: LayoutGrid },
-  { id: 'charts', label: 'Analytics', icon: BarChart2 },
-  { id: 'wiring', label: 'Wiring Diagrams', icon: Zap },
-  { id: 'safety', label: 'Safety / MT', icon: ShieldCheck },
-  { id: 'history', label: 'History', icon: History },
-  { id: 'defects', label: 'Defect Analysis', icon: FlaskConical },
-];
+const NAV_GROUPS = {
+  overview: [
+    { id: 'table',   label: 'Work Orders',   icon: LayoutList },
+    { id: 'board',   label: 'Machine Board', icon: LayoutGrid },
+    { id: 'charts',  label: 'Analytics',     icon: BarChart2 },
+    { id: 'history', label: 'History',       icon: History },
+  ],
+  services: [
+    { id: 'wiring',  label: 'Wiring Diagrams', icon: Zap },
+    { id: 'safety',  label: 'Safety / MT',     icon: ShieldCheck },
+    { id: 'defects', label: 'Defect Analysis', icon: FlaskConical },
+  ],
+  accidents: [
+    { id: 'accidents', label: 'Accidents', icon: TriangleAlert },
+  ],
+  mewp: [
+    { id: 'mewp', label: 'MEWP', icon: Forklift },
+  ],
+};
 
-export default function Sidebar({ activeView, onViewChange, onReset, isOpen, onClose }) {
+const GROUP_META = {
+  overview:  { label: 'Overview',        color: '#FF9900' },
+  services:  { label: 'Normal Services', color: '#818cf8' },
+  accidents: { label: 'Accidents',       color: '#ef4444' },
+  mewp:      { label: 'MEWP',            color: '#06b6d4' },
+};
+
+export default function Sidebar({ activeView, onViewChange, onReset, isOpen, onClose, sidebarMode = 'overview' }) {
+  const items = NAV_GROUPS[sidebarMode] || NAV_GROUPS.overview;
+  const meta  = GROUP_META[sidebarMode];
   return (
     <>
       {/* Mobile backdrop */}
@@ -42,13 +61,14 @@ export default function Sidebar({ activeView, onViewChange, onReset, isOpen, onC
         className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}
         aria-label="Main navigation"
       >
-        <div style={{ marginBottom: '4px', padding: '0 8px 8px', borderBottom: '1px solid var(--border)' }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Views
+        <div style={{ marginBottom: '4px', padding: '0 8px 8px', borderBottom: `1px solid ${meta.color}44`, display: 'flex', alignItems: 'center', gap: '7px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: meta.color, boxShadow: `0 0 5px ${meta.color}88`, flexShrink: 0 }} />
+          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: meta.color, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {meta.label}
           </span>
         </div>
 
-        {NAV_ITEMS.map(({ id, label, icon: Icon }) => {
+        {items.map(({ id, label, icon: Icon }) => {
           const active = activeView === id;
           return (
             <button
@@ -60,9 +80,9 @@ export default function Sidebar({ activeView, onViewChange, onReset, isOpen, onC
                 gap: '10px',
                 padding: '9px 10px',
                 borderRadius: '6px',
-                background: active ? 'rgba(255,153,0,0.12)' : 'none',
-                border: active ? '1px solid rgba(255,153,0,0.25)' : '1px solid transparent',
-                color: active ? '#FF9900' : 'var(--text-secondary)',
+                background: active ? `${meta.color}1e` : 'none',
+                border: active ? `1px solid ${meta.color}44` : '1px solid transparent',
+                color: active ? meta.color : 'var(--text-secondary)',
                 fontSize: '0.82rem',
                 fontWeight: active ? 600 : 400,
                 cursor: 'pointer',
