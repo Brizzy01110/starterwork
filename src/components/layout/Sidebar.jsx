@@ -1,10 +1,13 @@
-import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap } from 'lucide-react';
+import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap, ShieldCheck, History, FlaskConical } from 'lucide-react';
 
 const NAV_ITEMS = [
   { id: 'table', label: 'Work Orders', icon: LayoutList },
   { id: 'board', label: 'Machine Board', icon: LayoutGrid },
   { id: 'charts', label: 'Analytics', icon: BarChart2 },
   { id: 'wiring', label: 'Wiring Diagrams', icon: Zap },
+  { id: 'safety', label: 'Safety / MT', icon: ShieldCheck },
+  { id: 'history', label: 'History', icon: History },
+  { id: 'defects', label: 'Defect Analysis', icon: FlaskConical },
 ];
 
 export default function Sidebar({ activeView, onViewChange, onReset, isOpen, onClose }) {

@@ -9,12 +9,15 @@ import CreateWorkOrderModal from './components/workorders/CreateWorkOrderModal.j
 import MachineStateBoard from './components/board/MachineStateBoard.jsx';
 import AnalyticsView from './components/ui/AnalyticsView.jsx';
 import WiringDiagramsView from './components/ui/WiringDiagramsView.jsx';
+import SafetyView from './components/ui/SafetyView.jsx';
+import HistoryView from './components/workorders/HistoryView.jsx';
+import ProductAnalysisView from './components/ui/ProductAnalysisView.jsx';
 import { ToastContainer, useToast } from './components/ui/Toast.jsx';
 import { useWorkOrders } from './hooks/useWorkOrders.js';
 import { useFilters } from './hooks/useFilters.js';
 import { useMachineSpecs } from './hooks/useMachineSpecs.js';
 import { exportToCSV } from './utils/formatters.js';
-import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap } from 'lucide-react';
+import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical } from 'lucide-react';
 
 export default function App() {
   const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
@@ -31,6 +34,7 @@ export default function App() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   // Keep selectedWO in sync with latest data
   useEffect(() => {
@@ -56,7 +60,11 @@ export default function App() {
 
   const handleAddNote = useCallback((id, note, author) => {
     addNote(id, note, author);
-    addToast('Note added.', 'success');
+    addToast(`${author} responded on ${id}.`, 'success');
+    setNotifications((prev) => [
+      { id: Date.now(), woId: id, author, preview: note, ts: Date.now(), read: false },
+      ...prev,
+    ]);
   }, [addNote, addToast]);
 
   const handleDelete = useCallback((id) => {
@@ -95,8 +103,8 @@ export default function App() {
     }
   }
 
-  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap };
-  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring' };
+  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical };
+  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects' };
 
   return (
     <div
@@ -108,7 +116,12 @@ export default function App() {
         background: 'var(--bg-primary)',
       }}
     >
-      <Header onMenuToggle={() => setSidebarOpen((o) => !o)} menuOpen={sidebarOpen} />
+      <Header
+        onMenuToggle={() => setSidebarOpen((o) => !o)}
+        menuOpen={sidebarOpen}
+        notifications={notifications}
+        onClearNotifications={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
+      />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Sidebar
@@ -154,7 +167,7 @@ export default function App() {
                 role="tablist"
                 aria-label="View selector"
               >
-                {['table', 'board', 'charts', 'wiring'].map((view) => {
+                {['table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects'].map((view) => {
                   const Icon = VIEW_ICONS[view];
                   const active = activeView === view;
                   return (
@@ -281,6 +294,18 @@ export default function App() {
 
           {activeView === 'wiring' && (
             <WiringDiagramsView />
+          )}
+
+          {activeView === 'safety' && (
+            <SafetyView />
+          )}
+
+          {activeView === 'history' && (
+            <HistoryView workOrders={workOrders} />
+          )}
+
+          {activeView === 'defects' && (
+            <ProductAnalysisView workOrders={workOrders} />
           )}
         </main>
       </div>
