@@ -1,12 +1,6 @@
 // Mock work order data for Amazon Fulfillment Center
 
 export const TECHNICIANS = [
-  'Marcus R.',
-  'Sarah K.',
-  'DeShawn T.',
-  'Priya M.',
-  'Carlos V.',
-  'Lena H.',
   'Grebryson Gabriel',
 ];
 

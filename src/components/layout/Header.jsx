@@ -35,10 +35,10 @@ export default function Header({ onMenuToggle, menuOpen }) {
         </div>
         <div>
           <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.1 }}>
-            Starter Work
+            MT Services
           </div>
           <div style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', letterSpacing: '0.04em' }}>
-            FULFILLMENT CENTER OPS
+            Data Logs
           </div>
         </div>
       </div>

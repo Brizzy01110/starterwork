@@ -1,9 +1,10 @@
-import { LayoutList, LayoutGrid, BarChart2, RotateCcw } from 'lucide-react';
+import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap } from 'lucide-react';
 
 const NAV_ITEMS = [
   { id: 'table', label: 'Work Orders', icon: LayoutList },
   { id: 'board', label: 'Machine Board', icon: LayoutGrid },
   { id: 'charts', label: 'Analytics', icon: BarChart2 },
+  { id: 'wiring', label: 'Wiring Diagrams', icon: Zap },
 ];
 
 export default function Sidebar({ activeView, onViewChange, onReset, isOpen, onClose }) {

@@ -8,12 +8,13 @@ import WorkOrderDetailPanel from './components/workorders/WorkOrderDetailPanel.j
 import CreateWorkOrderModal from './components/workorders/CreateWorkOrderModal.jsx';
 import MachineStateBoard from './components/board/MachineStateBoard.jsx';
 import AnalyticsView from './components/ui/AnalyticsView.jsx';
+import WiringDiagramsView from './components/ui/WiringDiagramsView.jsx';
 import { ToastContainer, useToast } from './components/ui/Toast.jsx';
 import { useWorkOrders } from './hooks/useWorkOrders.js';
 import { useFilters } from './hooks/useFilters.js';
 import { useMachineSpecs } from './hooks/useMachineSpecs.js';
 import { exportToCSV } from './utils/formatters.js';
-import { Plus, Download, TableIcon, LayoutGrid, BarChart2 } from 'lucide-react';
+import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap } from 'lucide-react';
 
 export default function App() {
   const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
@@ -94,8 +95,8 @@ export default function App() {
     }
   }
 
-  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2 };
-  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics' };
+  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap };
+  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring' };
 
   return (
     <div
@@ -153,7 +154,7 @@ export default function App() {
                 role="tablist"
                 aria-label="View selector"
               >
-                {['table', 'board', 'charts'].map((view) => {
+                {['table', 'board', 'charts', 'wiring'].map((view) => {
                   const Icon = VIEW_ICONS[view];
                   const active = activeView === view;
                   return (
@@ -276,6 +277,10 @@ export default function App() {
 
           {activeView === 'charts' && (
             <AnalyticsView workOrders={workOrders} />
+          )}
+
+          {activeView === 'wiring' && (
+            <WiringDiagramsView />
           )}
         </main>
       </div>
