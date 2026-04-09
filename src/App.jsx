@@ -14,12 +14,18 @@ import HistoryView from './components/workorders/HistoryView.jsx';
 import ProductAnalysisView from './components/ui/ProductAnalysisView.jsx';
 import AccidentsView from './components/ui/AccidentsView.jsx';
 import MEWPView from './components/ui/MEWPView.jsx';
+import DowntimeView from './components/ui/DowntimeView.jsx';
+import PMSchedulerView from './components/ui/PMSchedulerView.jsx';
+import PartsInventoryView from './components/ui/PartsInventoryView.jsx';
+import ShiftHandoffView from './components/ui/ShiftHandoffView.jsx';
+import TechScorecardView from './components/ui/TechScorecardView.jsx';
+import MachineHealthView from './components/ui/MachineHealthView.jsx';
 import { ToastContainer, useToast } from './components/ui/Toast.jsx';
 import { useWorkOrders } from './hooks/useWorkOrders.js';
 import { useFilters } from './hooks/useFilters.js';
 import { useMachineSpecs } from './hooks/useMachineSpecs.js';
 import { exportToCSV } from './utils/formatters.js';
-import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift } from 'lucide-react';
+import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity } from 'lucide-react';
 
 export default function App() {
   const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
@@ -106,8 +112,8 @@ export default function App() {
     }
   }
 
-  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical, accidents: TriangleAlert, mewp: Forklift };
-  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects', accidents: 'Accidents', mewp: 'MEWP' };
+  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical, accidents: TriangleAlert, mewp: Forklift, downtime: DollarSign, pm: Wrench, parts: Package, handoff: ClipboardList, scorecard: User, health: Activity };
+  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects', accidents: 'Accidents', mewp: 'MEWP', downtime: 'Downtime', pm: 'PM Schedule', parts: 'Parts', handoff: 'Handoff', scorecard: 'Scorecards', health: 'Health' };
 
   return (
     <div
@@ -188,7 +194,7 @@ export default function App() {
                 role="tablist"
                 aria-label="View selector"
               >
-                {['table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects', 'accidents', 'mewp'].map((view) => {
+                {['table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects', 'accidents', 'mewp', 'downtime', 'pm', 'parts', 'handoff', 'scorecard', 'health'].map((view) => {
                   const Icon = VIEW_ICONS[view];
                   const active = activeView === view;
                   return (
@@ -335,6 +341,30 @@ export default function App() {
 
           {activeView === 'mewp' && (
             <MEWPView />
+          )}
+
+          {activeView === 'downtime' && (
+            <DowntimeView workOrders={workOrders} />
+          )}
+
+          {activeView === 'pm' && (
+            <PMSchedulerView />
+          )}
+
+          {activeView === 'parts' && (
+            <PartsInventoryView />
+          )}
+
+          {activeView === 'handoff' && (
+            <ShiftHandoffView workOrders={workOrders} />
+          )}
+
+          {activeView === 'scorecard' && (
+            <TechScorecardView workOrders={workOrders} />
+          )}
+
+          {activeView === 'health' && (
+            <MachineHealthView workOrders={workOrders} />
           )}
         </main>
       </div>

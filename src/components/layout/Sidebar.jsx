@@ -1,16 +1,22 @@
-import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift } from 'lucide-react';
+import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity } from 'lucide-react';
 
 const NAV_GROUPS = {
   overview: [
-    { id: 'table',   label: 'Work Orders',   icon: LayoutList },
-    { id: 'board',   label: 'Machine Board', icon: LayoutGrid },
-    { id: 'charts',  label: 'Analytics',     icon: BarChart2 },
-    { id: 'history', label: 'History',       icon: History },
+    { id: 'table',     label: 'Work Orders',    icon: LayoutList },
+    { id: 'board',     label: 'Machine Board',  icon: LayoutGrid },
+    { id: 'charts',    label: 'Analytics',      icon: BarChart2 },
+    { id: 'history',   label: 'History',        icon: History },
+    { id: 'downtime',  label: 'Downtime Cost',  icon: DollarSign },
+    { id: 'scorecard', label: 'Tech Scorecards',icon: User },
+    { id: 'health',    label: 'Machine Health', icon: Activity },
+    { id: 'handoff',   label: 'Shift Handoff',  icon: ClipboardList },
   ],
   services: [
     { id: 'wiring',  label: 'Wiring Diagrams', icon: Zap },
     { id: 'safety',  label: 'Safety / MT',     icon: ShieldCheck },
     { id: 'defects', label: 'Defect Analysis', icon: FlaskConical },
+    { id: 'pm',      label: 'PM Scheduler',    icon: Wrench },
+    { id: 'parts',   label: 'Parts Inventory', icon: Package },
   ],
   accidents: [
     { id: 'accidents', label: 'Accidents', icon: TriangleAlert },
