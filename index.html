@@ -7,7 +7,8 @@
     <title>MT Services | Data Logs</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" data-year="2026"></div>
+    <script>document.getElementById('root').setAttribute('data-year', new Date().getFullYear());</script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

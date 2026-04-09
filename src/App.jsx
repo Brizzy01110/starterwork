@@ -115,10 +115,25 @@ export default function App() {
         display: 'flex',
         flexDirection: 'column',
         height: '100vh',
+        position: 'relative',
         overflow: 'hidden',
         background: 'var(--bg-primary)',
       }}
     >
+      {/* Behind-content circular MTS watermark */}
+      <svg
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 520, height: 520, pointerEvents: 'none', zIndex: 0, userSelect: 'none', opacity: 0.13 }}
+        viewBox="0 0 520 520"
+        aria-hidden="true"
+      >
+        <circle cx="260" cy="260" r="240" fill="none" stroke="#FF9900" strokeWidth="2.5" strokeDasharray="8 10" />
+        <circle cx="260" cy="260" r="200" fill="none" stroke="#FF9900" strokeWidth="1" strokeDasharray="4 8" />
+        <text x="260" y="285" textAnchor="middle" fill="#FF9900" fontSize="130" fontWeight="900" fontFamily="Inter,system-ui,sans-serif" letterSpacing="-4">MTS</text>
+        <text x="260" y="340" textAnchor="middle" fill="#FF9900" fontSize="26" fontWeight="700" fontFamily="Inter,system-ui,sans-serif" letterSpacing="6">MT SERVICES</text>
+        <text x="260" y="375" textAnchor="middle" fill="#FF9900" fontSize="16" fontWeight="500" fontFamily="Inter,system-ui,sans-serif" letterSpacing="3">GREBRYSON GABRIEL</text>
+        <text x="260" y="190" textAnchor="middle" fill="#FF9900" fontSize="14" fontFamily="Inter,system-ui,sans-serif" letterSpacing="2">© 2026</text>
+      </svg>
+
       <Header
         onMenuToggle={() => setSidebarOpen((o) => !o)}
         menuOpen={sidebarOpen}

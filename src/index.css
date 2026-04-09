@@ -28,13 +28,71 @@
   padding: 0;
 }
 
+/* Ensure all real app content sits above the background watermark */
+#root > * {
+  position: relative;
+  z-index: 1;
+}
+
 html, body, #root {
   height: 100%;
   background-color: var(--bg-primary);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(255,153,0,0.045) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 90%, rgba(129,140,248,0.04) 0%, transparent 55%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      rgba(42,48,64,0.25) 39px,
+      rgba(42,48,64,0.25) 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      rgba(42,48,64,0.25) 39px,
+      rgba(42,48,64,0.25) 40px
+    );
   color: var(--text-primary);
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
+
+/* ── Copyright watermark ──────────────────────────────────────────────────── */
+#root::after {
+  content: '© ' attr(data-year) ' MT Services — Grebryson Gabriel. All rights reserved. Unauthorized reproduction prohibited.';
+  position: fixed;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%) rotate(0deg);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: rgba(138, 149, 168, 0.28);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  letter-spacing: 0.06em;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  user-select: none;
+}
+
+/* ── Diagonal watermark tile ──────────────────────────────────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0px,
+    transparent 120px,
+    rgba(255,153,0,0.012) 120px,
+    rgba(255,153,0,0.012) 121px
+  );
+}
+
 
 /* Scrollbar styling */
 ::-webkit-scrollbar {
