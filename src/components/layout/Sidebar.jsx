@@ -1,7 +1,8 @@
-import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity } from 'lucide-react';
+import { LayoutList, LayoutGrid, BarChart2, RotateCcw, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity, Monitor } from 'lucide-react';
 
 const NAV_GROUPS = {
   overview: [
+    { id: 'dashboard', label: 'System Dashboard', icon: Monitor },
     { id: 'table',     label: 'Work Orders',    icon: LayoutList },
     { id: 'board',     label: 'Machine Board',  icon: LayoutGrid },
     { id: 'charts',    label: 'Analytics',      icon: BarChart2 },

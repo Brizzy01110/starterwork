@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Zap, Menu, X, Bell, MessageSquare, HelpCircle, Send, Loader } from 'lucide-react';
+import { Zap, Menu, X, Bell, MessageSquare, HelpCircle, Send, Loader, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 
 // ─── Formspree endpoint ───────────────────────────────────────────────────────
 // 1. Go to https://formspree.io  →  sign up (free)
@@ -16,7 +16,7 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export default function Header({ onMenuToggle, menuOpen, notifications = [], onClearNotifications, sidebarMode = 'overview', onModeChange }) {
+export default function Header({ onMenuToggle, menuOpen, notifications = [], onClearNotifications, sidebarMode = 'overview', onModeChange, connStatus = 'connecting', lastRefreshed = null, onManualRefresh, onOpenAlerts }) {
   const [open, setOpen] = useState(false);
   const [itOpen, setItOpen] = useState(false);
   const [itName, setItName] = useState('');
@@ -91,8 +91,9 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
 
           {/* Main title + IT button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em', lineHeight: 1 }}>
-              MT Services
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>MT Services</span>
+              <span style={{ fontSize: '0.55rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Active Work Orders · System Status · Downtime Alerts</span>
             </div>
             <button
               onClick={() => setItOpen(true)}
@@ -220,14 +221,52 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: '6px',
-          padding: '4px 10px',
-          background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)',
-          borderRadius: '99px',
-        }}>
-          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22c55e' }} />
-          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#22c55e', letterSpacing: '0.04em' }}>LIVE</span>
+        {/* Alert settings button */}
+        <button
+          onClick={onOpenAlerts}
+          title="Alert settings"
+          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', borderRadius: '6px' }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#FF9900'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+        >
+          <Bell size={16} />
+        </button>
+
+        {/* Real-time connection status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <button
+            onClick={onManualRefresh}
+            title="Refresh now"
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '3px', display: 'flex', borderRadius: '4px' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
+          >
+            <RefreshCw size={13} />
+          </button>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '6px',
+            padding: '4px 10px',
+            background: connStatus === 'connected' ? 'rgba(34,197,94,0.1)' : connStatus === 'connecting' ? 'rgba(255,153,0,0.1)' : 'rgba(239,68,68,0.1)',
+            border: `1px solid ${connStatus === 'connected' ? 'rgba(34,197,94,0.2)' : connStatus === 'connecting' ? 'rgba(255,153,0,0.2)' : 'rgba(239,68,68,0.2)'}`,
+            borderRadius: '99px',
+            cursor: 'default',
+          }}
+            title={lastRefreshed ? `Last updated: ${lastRefreshed.toLocaleTimeString()}` : 'Connecting…'}
+          >
+            {connStatus === 'connected' ? (
+              <Wifi size={11} color="#22c55e" />
+            ) : connStatus === 'connecting' ? (
+              <Loader size={11} color="#FF9900" style={{ animation: 'spin 1s linear infinite' }} />
+            ) : (
+              <WifiOff size={11} color="#ef4444" />
+            )}
+            <span style={{
+              fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.04em',
+              color: connStatus === 'connected' ? '#22c55e' : connStatus === 'connecting' ? '#FF9900' : '#ef4444',
+            }}>
+              {connStatus === 'connected' ? 'LIVE' : connStatus === 'connecting' ? 'SYNC…' : 'OFFLINE'}
+            </span>
+          </div>
         </div>
 
         {/* Notification bell */}

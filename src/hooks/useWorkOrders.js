@@ -45,22 +45,28 @@ function toDb(wo) {
 export function useWorkOrders() {
   const [workOrders, setWorkOrders] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
+  const [connStatus, setConnStatus] = useState('connecting'); // 'connected' | 'connecting' | 'disconnected'
+  const [lastRefreshed, setLastRefreshed] = useState(null);
+
+  const fetchAll = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('work_orders')
+      .select('*')
+      .order('updated_at', { ascending: false });
+    if (error) {
+      console.error('Supabase fetch error:', error.message);
+      setConnStatus('disconnected');
+    } else if (data) {
+      setWorkOrders(data.map(fromDb));
+      setLastRefreshed(new Date());
+      setConnStatus('connected');
+    }
+    setDbLoading(false);
+  }, []);
 
   // Initial fetch
   useEffect(() => {
-    supabase
-      .from('work_orders')
-      .select('*')
-      .order('updated_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          console.error('Supabase fetch error:', error.message);
-        }
-        if (data) {
-          setWorkOrders(data.map(fromDb));
-        }
-        setDbLoading(false);
-      });
+    fetchAll();
 
     // Real-time subscription
     const channel = supabase
@@ -69,6 +75,7 @@ export function useWorkOrders() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'work_orders' },
         (payload) => {
+          setLastRefreshed(new Date());
           if (payload.eventType === 'INSERT') {
             setWorkOrders((prev) => [fromDb(payload.new), ...prev]);
           } else if (payload.eventType === 'UPDATE') {
@@ -80,10 +87,20 @@ export function useWorkOrders() {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setConnStatus('connected');
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') setConnStatus('disconnected');
+        else setConnStatus('connecting');
+      });
 
-    return () => supabase.removeChannel(channel);
-  }, []);
+    // Auto-refresh every 30s as fallback
+    const refreshInterval = setInterval(fetchAll, 30000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(refreshInterval);
+    };
+  }, [fetchAll]);
 
   const createWorkOrder = useCallback(async (data) => {
     const now = new Date().toISOString();
@@ -155,6 +172,9 @@ export function useWorkOrders() {
   return {
     workOrders,
     dbLoading,
+    connStatus,
+    lastRefreshed,
+    manualRefresh: fetchAll,
     createWorkOrder,
     updateWorkOrder,
     addNote,

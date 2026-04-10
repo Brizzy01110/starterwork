@@ -14,6 +14,8 @@ import HistoryView from './components/workorders/HistoryView.jsx';
 import ProductAnalysisView from './components/ui/ProductAnalysisView.jsx';
 import AccidentsView from './components/ui/AccidentsView.jsx';
 import MEWPView from './components/ui/MEWPView.jsx';
+import SystemDashboard from './components/ui/SystemDashboard.jsx';
+import AlertSettingsPanel from './components/ui/AlertSettingsPanel.jsx';
 import DowntimeView from './components/ui/DowntimeView.jsx';
 import PMSchedulerView from './components/ui/PMSchedulerView.jsx';
 import PartsInventoryView from './components/ui/PartsInventoryView.jsx';
@@ -22,13 +24,14 @@ import TechScorecardView from './components/ui/TechScorecardView.jsx';
 import MachineHealthView from './components/ui/MachineHealthView.jsx';
 import { ToastContainer, useToast } from './components/ui/Toast.jsx';
 import { useWorkOrders } from './hooks/useWorkOrders.js';
+import { useAlerts, loadAlertSettings } from './hooks/useAlerts.js';
 import { useFilters } from './hooks/useFilters.js';
 import { useMachineSpecs } from './hooks/useMachineSpecs.js';
 import { exportToCSV } from './utils/formatters.js';
-import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity } from 'lucide-react';
+import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity, Monitor } from 'lucide-react';
 
 export default function App() {
-  const { workOrders, dbLoading, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
+  const { workOrders, dbLoading, connStatus, lastRefreshed, manualRefresh, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
   const { upsertSpec, getSpec } = useMachineSpecs();
   const {
     filters, updateFilter, resetFilters, sortKey, sortDir, toggleSort,
@@ -37,13 +40,17 @@ export default function App() {
 
   const { toasts, addToast, dismissToast } = useToast();
 
-  const [activeView, setActiveView] = useState('table');
+  const [activeView, setActiveView] = useState('dashboard');
   const [selectedWO, setSelectedWO] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarMode, setSidebarMode] = useState('overview');
   const [notifications, setNotifications] = useState([]);
+  const [showAlertSettings, setShowAlertSettings] = useState(false);
+  const [alertSettings, setAlertSettings] = useState(loadAlertSettings);
+
+  useAlerts(workOrders, alertSettings);
 
   // Keep selectedWO in sync with latest data
   useEffect(() => {
@@ -112,8 +119,8 @@ export default function App() {
     }
   }
 
-  const VIEW_ICONS = { table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical, accidents: TriangleAlert, mewp: Forklift, downtime: DollarSign, pm: Wrench, parts: Package, handoff: ClipboardList, scorecard: User, health: Activity };
-  const VIEW_LABELS = { table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects', accidents: 'Accidents', mewp: 'MEWP', downtime: 'Downtime', pm: 'PM Schedule', parts: 'Parts', handoff: 'Handoff', scorecard: 'Scorecards', health: 'Health' };
+  const VIEW_ICONS = { dashboard: Monitor, table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical, accidents: TriangleAlert, mewp: Forklift, downtime: DollarSign, pm: Wrench, parts: Package, handoff: ClipboardList, scorecard: User, health: Activity };
+  const VIEW_LABELS = { dashboard: 'Dashboard', table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects', accidents: 'Accidents', mewp: 'MEWP', downtime: 'Downtime', pm: 'PM Schedule', parts: 'Parts', handoff: 'Handoff', scorecard: 'Scorecards', health: 'Health' };
 
   return (
     <div
@@ -147,6 +154,10 @@ export default function App() {
         onClearNotifications={() => setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))}
         sidebarMode={sidebarMode}
         onModeChange={setSidebarMode}
+        connStatus={connStatus}
+        lastRefreshed={lastRefreshed}
+        onManualRefresh={manualRefresh}
+        onOpenAlerts={() => setShowAlertSettings(true)}
       />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -194,7 +205,7 @@ export default function App() {
                 role="tablist"
                 aria-label="View selector"
               >
-                {['table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects', 'accidents', 'mewp', 'downtime', 'pm', 'parts', 'handoff', 'scorecard', 'health'].map((view) => {
+                {['dashboard', 'table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects', 'accidents', 'mewp', 'downtime', 'pm', 'parts', 'handoff', 'scorecard', 'health'].map((view) => {
                   const Icon = VIEW_ICONS[view];
                   const active = activeView === view;
                   return (
@@ -276,6 +287,10 @@ export default function App() {
               </button>
             </div>
           </div>
+
+          {activeView === 'dashboard' && (
+            <SystemDashboard workOrders={workOrders} connStatus={connStatus} lastRefreshed={lastRefreshed} />
+          )}
 
           {activeView === 'table' && (
             <>
@@ -391,6 +406,15 @@ export default function App() {
       )}
 
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {showAlertSettings && (
+        <AlertSettingsPanel
+          onClose={() => {
+            setAlertSettings(loadAlertSettings());
+            setShowAlertSettings(false);
+          }}
+        />
+      )}
 
       <style>{`
         @media (max-width: 640px) {
