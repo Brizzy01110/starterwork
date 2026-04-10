@@ -244,6 +244,33 @@ body::before {
   outline-offset: 2px;
 }
 
+/* ── Global responsive helpers ── */
+@media (max-width: 768px) {
+  /* Tighten all paddings on small screens */
+  .sys-panel { border-radius: 8px; }
+
+  /* Make recharts containers shrink properly */
+  .recharts-responsive-container { min-width: 0 !important; }
+
+  /* Prevent overflow on tables */
+  table { font-size: 0.75rem; }
+  .wo-table td, .wo-table th { padding: 7px 8px; }
+
+  /* Stack flex rows */
+  .flex-row-mobile { flex-direction: column !important; }
+
+  /* Full width inputs on mobile */
+  input, select, textarea { font-size: 16px !important; } /* prevent iOS zoom */
+}
+
+@media (max-width: 480px) {
+  /* Header font scale */
+  body { font-size: 14px; }
+
+  /* Compact stat cards */
+  .stat-card-value { font-size: 1.4rem !important; }
+}
+
 /* Table styles */
 .wo-table {
   width: 100%;

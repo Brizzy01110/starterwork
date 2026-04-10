@@ -181,112 +181,38 @@ export default function App() {
             minWidth: 0,
           }}
         >
-          {!dbLoading && <StatsSummaryBar workOrders={workOrders} />}
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '10px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '7px',
-                  padding: '3px',
-                  gap: '2px',
-                }}
-                role="tablist"
-                aria-label="View selector"
-              >
-                {['dashboard', 'table', 'board', 'charts', 'wiring', 'safety', 'history', 'defects', 'accidents', 'mewp', 'downtime', 'pm', 'parts', 'handoff', 'scorecard', 'health'].map((view) => {
-                  const Icon = VIEW_ICONS[view];
-                  const active = activeView === view;
-                  return (
-                    <button
-                      key={view}
-                      onClick={() => setActiveView(view)}
-                      role="tab"
-                      aria-selected={active}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '5px',
-                        padding: '6px 10px',
-                        borderRadius: '5px',
-                        background: active ? '#FF9900' : 'none',
-                        border: 'none',
-                        color: active ? '#000' : 'var(--text-secondary)',
-                        fontSize: '0.78rem',
-                        fontWeight: active ? 700 : 400,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                      }}
-                    >
-                      <Icon size={13} />
-                      <span className="view-label">{VIEW_LABELS[view]}</span>
-                    </button>
-                  );
-                })}
+          {/* Page title bar */}
+          <div className="page-titlebar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {(() => { const Icon = VIEW_ICONS[activeView]; return Icon ? <Icon size={16} color="#FF9900" /> : null; })()}
+              <div>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{VIEW_LABELS[activeView]}</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', marginTop: '2px', textTransform: 'uppercase', letterSpacing: '0.07em' }}>MT Services · Active Work Orders System</div>
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => { exportToCSV(filteredAndSorted); addToast('CSV exported.', 'success'); }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 12px',
-                  background: 'var(--bg-elevated)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '6px',
-                  color: 'var(--text-secondary)',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
-                aria-label="Export to CSV"
-              >
-                <Download size={13} />
-                <span className="view-label">Export CSV</span>
-              </button>
-
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {(activeView === 'table' || activeView === 'dashboard') && (
+                <button
+                  onClick={() => { exportToCSV(filteredAndSorted); addToast('CSV exported.', 'success'); }}
+                  className="btn-secondary"
+                  aria-label="Export to CSV"
+                >
+                  <Download size={13} />
+                  <span className="hide-xs">Export</span>
+                </button>
+              )}
               <button
                 onClick={() => setShowCreateModal(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  background: '#FF9900',
-                  border: 'none',
-                  borderRadius: '6px',
-                  color: '#000',
-                  fontSize: '0.82rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#e68900')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#FF9900')}
+                className="btn-primary"
                 aria-label="Create new work order"
               >
-                <Plus size={15} />
-                New WO
+                <Plus size={14} />
+                <span>New WO</span>
               </button>
             </div>
           </div>
+
+          {activeView === 'dashboard' && !dbLoading && <StatsSummaryBar workOrders={workOrders} />}
 
           {activeView === 'dashboard' && (
             <SystemDashboard workOrders={workOrders} connStatus={connStatus} lastRefreshed={lastRefreshed} />
@@ -416,9 +342,104 @@ export default function App() {
         />
       )}
 
+      {/* Mobile bottom nav */}
+      <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
+        {[
+          { id: 'dashboard', icon: Monitor, label: 'Dashboard' },
+          { id: 'table',     icon: TableIcon, label: 'Work Orders' },
+          { id: 'downtime',  icon: DollarSign, label: 'Downtime' },
+          { id: 'health',    icon: Activity,   label: 'Health' },
+          { id: 'handoff',   icon: ClipboardList, label: 'Handoff' },
+        ].map(({ id, icon: Icon, label }) => {
+          const active = activeView === id;
+          return (
+            <button key={id} onClick={() => setActiveView(id)} className={`mobile-nav-btn${active ? ' active' : ''}`}>
+              <Icon size={20} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
       <style>{`
-        @media (max-width: 640px) {
-          .view-label { display: none; }
+        /* ── Page title bar ── */
+        .page-titlebar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 0 4px;
+          border-bottom: 1px solid var(--border);
+          margin-bottom: 4px;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .btn-primary {
+          display: flex; align-items: center; gap: 6px;
+          padding: 8px 14px; border-radius: 7px;
+          background: #FF9900; border: none;
+          color: #000; font-size: 0.82rem; font-weight: 700;
+          cursor: pointer; transition: background 0.15s;
+          white-space: nowrap;
+        }
+        .btn-primary:hover { background: #e68900; }
+        .btn-secondary {
+          display: flex; align-items: center; gap: 6px;
+          padding: 7px 12px; border-radius: 7px;
+          background: var(--bg-elevated); border: 1px solid var(--border);
+          color: var(--text-secondary); font-size: 0.78rem; font-weight: 500;
+          cursor: pointer; transition: color 0.15s;
+          white-space: nowrap;
+        }
+        .btn-secondary:hover { color: var(--text-primary); }
+
+        /* ── Mobile bottom nav (hidden on desktop) ── */
+        .mobile-bottom-nav { display: none; }
+
+        /* ── Responsive breakpoints ── */
+        @media (max-width: 768px) {
+          /* Show mobile bottom nav */
+          .mobile-bottom-nav {
+            display: flex;
+            position: fixed; bottom: 0; left: 0; right: 0;
+            height: 60px;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            z-index: 50;
+            justify-content: space-around;
+            align-items: stretch;
+          }
+          .mobile-nav-btn {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 3px; background: none; border: none;
+            color: var(--text-secondary); font-size: 0.58rem;
+            font-weight: 600; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 0.04em;
+            padding: 6px 2px;
+            transition: color 0.15s;
+          }
+          .mobile-nav-btn.active { color: #FF9900; }
+          .mobile-nav-btn.active svg { filter: drop-shadow(0 0 4px #FF9900); }
+
+          /* Push content above bottom nav */
+          main { padding-bottom: 72px !important; }
+
+          /* Hide desktop sidebar on mobile */
+          .sidebar { display: none !important; }
+
+          /* Stack stats bar */
+          .stats-bar { flex-direction: column !important; }
+
+          /* Full-width cards on mobile */
+          [style*="grid-template-columns"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .hide-xs { display: none !important; }
+          .page-titlebar { padding: 8px 0 4px; }
+          main { padding: 10px 10px 72px !important; }
         }
       `}</style>
     </div>

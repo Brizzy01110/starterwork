@@ -93,7 +93,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
               <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>MT Services</span>
-              <span style={{ fontSize: '0.55rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Active Work Orders · System Status · Downtime Alerts</span>
+              <span className="header-subtitle" style={{ fontSize: '0.55rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Active Work Orders · System Status · Downtime Alerts</span>
             </div>
             <button
               onClick={() => setItOpen(true)}
@@ -115,7 +115,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
           </div>
 
           {/* Subtitle group */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0px', paddingLeft: '6px', borderLeft: '1px solid var(--border)' }}>
+          <div className="header-mode-group" style={{ display: 'flex', alignItems: 'center', gap: '0px', paddingLeft: '6px', borderLeft: '1px solid var(--border)' }}>
 
             <button
               onClick={() => onModeChange('overview')}
@@ -260,7 +260,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
             ) : (
               <WifiOff size={11} color="#ef4444" />
             )}
-            <span style={{
+            <span className="header-conn-label" style={{
               fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.04em',
               color: connStatus === 'connected' ? '#22c55e' : connStatus === 'connecting' ? '#FF9900' : '#ef4444',
             }}>
@@ -522,10 +522,17 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
       )}
 
       <style>{`
-        @media (max-width: 768px) {
-          .mobile-menu-btn { display: flex !important; }
-        }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Hide mode switcher group on very small screens */
+        @media (max-width: 640px) {
+          .header-mode-group { display: none !important; }
+          .header-subtitle { display: none !important; }
+          .header-conn-label { display: none !important; }
+        }
+        @media (max-width: 480px) {
+          .header-it-btn span { display: none; }
+        }
       `}</style>
     </header>
   );
