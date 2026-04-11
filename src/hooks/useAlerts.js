@@ -1,76 +1,106 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-// Carrier SMS email gateways
-export const CARRIERS = [
-  { label: 'Verizon',    gateway: 'vtext.com' },
-  { label: 'AT&T',       gateway: 'txt.att.net' },
-  { label: 'T-Mobile',   gateway: 'tmomail.net' },
-  { label: 'Sprint',     gateway: 'messaging.sprintpcs.com' },
-  { label: 'Metro PCS',  gateway: 'mymetropcs.com' },
-  { label: 'US Cellular',gateway: 'email.uscc.net' },
-  { label: 'Boost',      gateway: 'sms.myboostmobile.com' },
-  { label: 'Cricket',    gateway: 'mms.cricketwireless.net' },
-];
+// Top US carriers tried in parallel — only the right one delivers to the handset
+const TOP_CARRIERS = ['vtext.com', 'txt.att.net', 'tmomail.net'];
 
 const STORAGE_KEY = 'mts_alert_settings';
 const FIRED_KEY   = 'mts_fired_alerts';
+const PERM_KEY    = 'mts_sms_perm';
 
+// ── Settings persistence ────────────────────────────────────────────────────
 export function loadAlertSettings() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultSettings();
-  } catch { return defaultSettings(); }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultSettings(); }
+  catch { return defaultSettings(); }
 }
-
 export function saveAlertSettings(s) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 }
 
 function defaultSettings() {
   return {
-    pushEnabled:      false,
-    emailEnabled:     false,
-    smsEnabled:       false,
-    alertEmail:       '',
-    alertPhone:       '',
-    alertCarrier:     'vtext.com',
-    formspreeId:      'REPLACE_WITH_FORM_ID', // reuse IT form or create separate
-    machineDown:      true,
-    criticalCreated:  true,
-    highCreated:      true,
-    overdueHours:     8,   // alert if WO open > N hours
-    overdueEnabled:   true,
+    pushEnabled:     false,
+    emailEnabled:    false,
+    smsEnabled:      false,
+    alertEmail:      '',
+    alertPhone:      '',
+    formspreeId:     'REPLACE_WITH_FORM_ID',
+    machineDown:     true,
+    criticalCreated: true,
+    highCreated:     true,
+    overdueHours:    8,
+    overdueEnabled:  true,
   };
 }
 
+// ── SMS permission helpers ─────────────────────────────────────────────────
+export function loadSMSPerm() {
+  try { return JSON.parse(localStorage.getItem(PERM_KEY)) || null; }
+  catch { return null; }
+}
+export function saveSMSPerm(obj) {
+  localStorage.setItem(PERM_KEY, JSON.stringify(obj));
+}
+function genToken() {
+  return Math.random().toString(36).slice(2, 10).toUpperCase();
+}
+
+/**
+ * Sends an opt-in permission request SMS to the given phone number.
+ * Tries the top 3 US carriers in parallel — only the matching one delivers.
+ * The message contains a tap-to-allow link and "Reply GO / NO" instructions.
+ */
+export async function sendSMSPermissionRequest(phone, formspreeId) {
+  if (!phone || !formspreeId || formspreeId.includes('REPLACE')) {
+    return { error: 'Phone number and Formspree ID are required.' };
+  }
+  const digits   = phone.replace(/\D/g, '');
+  const token    = genToken();
+  const appUrl   = window.location.origin;
+  const allowUrl = `${appUrl}?sms_allow=${token}`;
+  const denyUrl  = `${appUrl}?sms_deny=${token}`;
+
+  saveSMSPerm({ token, phone: digits, status: 'pending', sentAt: Date.now() });
+
+  const message =
+    `MT Services: Allow maintenance alerts on this number?\n\n` +
+    `✅ ALLOW: ${allowUrl}\n` +
+    `❌ DENY:  ${denyUrl}\n\n` +
+    `Or reply GO to allow / NO to decline.`;
+
+  const results = await Promise.allSettled(
+    TOP_CARRIERS.map((carrier) =>
+      fetch(`https://formspree.io/f/${formspreeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          _replyto: `${digits}@${carrier}`,
+          subject: 'MT Services: Allow Alerts?',
+          message,
+          alert_type: 'SMS_PERMISSION',
+        }),
+      })
+    )
+  );
+
+  const ok = results.some((r) => r.status === 'fulfilled');
+  return ok ? { token } : { error: 'Failed to send — check your Formspree ID.' };
+}
+
+// ── Fired-alert deduplication ──────────────────────────────────────────────
 function loadFired() {
   try { return new Set(JSON.parse(localStorage.getItem(FIRED_KEY)) || []); }
   catch { return new Set(); }
 }
-
 function saveFired(set) {
-  // Keep last 200 IDs to avoid unbounded growth
-  const arr = [...set].slice(-200);
-  localStorage.setItem(FIRED_KEY, JSON.stringify(arr));
+  localStorage.setItem(FIRED_KEY, JSON.stringify([...set].slice(-200)));
 }
 
-async function requestPushPermission() {
-  if (!('Notification' in window)) return false;
-  if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
-  const result = await Notification.requestPermission();
-  return result === 'granted';
-}
-
+// ── Notification helpers ───────────────────────────────────────────────────
 function fireBrowserNotification(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   const n = new Notification(title, {
-    body,
-    tag,
-    icon: '/favicon.svg',
-    badge: '/favicon.svg',
-    requireInteraction: true,
+    body, tag, icon: '/favicon.svg', badge: '/favicon.svg', requireInteraction: true,
   });
-  // Auto-close after 12s
   setTimeout(() => n.close(), 12000);
 }
 
@@ -87,32 +117,44 @@ async function sendEmailAlert(settings, subject, body) {
         alert_type: 'AUTOMATED_ALERT',
       }),
     });
-  } catch (e) {
-    console.warn('Alert email failed:', e.message);
-  }
+  } catch (e) { console.warn('Email alert failed:', e.message); }
 }
 
+/**
+ * Sends alert SMS to the phone number via the top 3 carrier gateways in
+ * parallel. Only the correct carrier delivers — others silently bounce.
+ * Every message includes the app link and "Reply GO to acknowledge".
+ */
 async function sendSMSAlert(settings, subject, body) {
-  if (!settings.alertPhone || !settings.alertCarrier || !settings.formspreeId || settings.formspreeId.includes('REPLACE')) return;
-  const smsEmail = `${settings.alertPhone.replace(/\D/g, '')}@${settings.alertCarrier}`;
-  try {
-    await fetch(`https://formspree.io/f/${settings.formspreeId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        _replyto: smsEmail,
-        subject,
-        message: `${subject} — ${body}`,
-        alert_type: 'SMS_ALERT',
-      }),
-    });
-  } catch (e) {
-    console.warn('SMS alert failed:', e.message);
-  }
+  if (!settings.alertPhone || !settings.formspreeId || settings.formspreeId.includes('REPLACE')) return;
+  const digits = settings.alertPhone.replace(/\D/g, '');
+  const appUrl = window.location.origin;
+
+  const fullMsg =
+    `🔔 ${subject}\n` +
+    `${body}\n\n` +
+    `View dashboard: ${appUrl}\n` +
+    `Reply GO to acknowledge / NO to dismiss`;
+
+  await Promise.allSettled(
+    TOP_CARRIERS.map((carrier) =>
+      fetch(`https://formspree.io/f/${settings.formspreeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          _replyto: `${digits}@${carrier}`,
+          subject,
+          message: fullMsg,
+          alert_type: 'SMS_ALERT',
+        }),
+      }).catch(() => {})
+    )
+  );
 }
 
+// ── Main alert hook ────────────────────────────────────────────────────────
 export function useAlerts(workOrders, settings) {
-  const fired = useRef(loadFired());
+  const fired  = useRef(loadFired());
   const prevWOs = useRef([]);
 
   const dispatch = useCallback(async (id, title, body) => {
@@ -131,68 +173,42 @@ export function useAlerts(workOrders, settings) {
     }
   }, [settings]);
 
-  // Watch for new WOs and state changes
   useEffect(() => {
-    const prev = prevWOs.current;
+    const prev    = prevWOs.current;
     const prevIds = new Set(prev.map((w) => w.id));
 
     workOrders.forEach((wo) => {
-      const isNew = !prevIds.has(wo.id);
+      const isNew    = !prevIds.has(wo.id);
       const priority = (wo.priority || '').toLowerCase();
 
-      // Machine down alert
       if (settings.machineDown && wo.machineState === 'Down') {
-        dispatch(
-          `down-${wo.id}`,
-          `Machine Down — ${wo.machineId}`,
-          `${wo.machineId} is offline. WO ${wo.id}: ${wo.issueTitle}`
-        );
+        dispatch(`down-${wo.id}`, `Machine Down — ${wo.machineId}`, `${wo.machineId} is offline. WO ${wo.id}: ${wo.issueTitle}`);
       }
-
-      // Critical WO created
       if (isNew && settings.criticalCreated && priority === 'critical') {
-        dispatch(
-          `critical-${wo.id}`,
-          `Critical Issue — ${wo.machineId}`,
-          `WO ${wo.id}: ${wo.issueTitle}`
-        );
+        dispatch(`critical-${wo.id}`, `Critical Issue — ${wo.machineId}`, `WO ${wo.id}: ${wo.issueTitle}`);
       }
-
-      // High priority WO created
       if (isNew && settings.highCreated && priority === 'high') {
-        dispatch(
-          `high-${wo.id}`,
-          `High Priority Issue — ${wo.machineId}`,
-          `WO ${wo.id}: ${wo.issueTitle}`
-        );
+        dispatch(`high-${wo.id}`, `High Priority — ${wo.machineId}`, `WO ${wo.id}: ${wo.issueTitle}`);
       }
     });
 
     prevWOs.current = workOrders;
   }, [workOrders, dispatch, settings]);
 
-  // Overdue check — runs every 5 minutes
   useEffect(() => {
     if (!settings.overdueEnabled) return;
-
     function checkOverdue() {
-      const threshold = (settings.overdueHours || 8) * 3600000;
+      const threshold = (settings.overdueHours || 8) * 3_600_000;
       workOrders
-        .filter((w) => w.status !== 'resolved' && w.status !== 'Resolved' && w.status !== 'closed')
+        .filter((w) => !['resolved', 'Resolved', 'closed'].includes(w.status))
         .forEach((wo) => {
-          const age = Date.now() - new Date(wo.createdAt).getTime();
+          const age    = Date.now() - new Date(wo.createdAt).getTime();
+          const dayKey = `overdue-${wo.id}-${new Date().toISOString().slice(0, 10)}`;
           if (age >= threshold) {
-            // Fire once per 24h cycle using a date-stamped key
-            const dayKey = `overdue-${wo.id}-${new Date().toISOString().slice(0, 10)}`;
-            dispatch(
-              dayKey,
-              `Overdue WO — ${wo.machineId}`,
-              `WO ${wo.id} has been open for ${(age / 3600000).toFixed(1)}h: ${wo.issueTitle}`
-            );
+            dispatch(dayKey, `Overdue WO — ${wo.machineId}`, `WO ${wo.id} open for ${(age / 3_600_000).toFixed(1)}h: ${wo.issueTitle}`);
           }
         });
     }
-
     checkOverdue();
     const t = setInterval(checkOverdue, 5 * 60 * 1000);
     return () => clearInterval(t);

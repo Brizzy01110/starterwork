@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  --bg-primary:   #07090d;
-  --bg-surface:   #0d1017;
-  --bg-elevated:  #141923;
-  --border:       #1e2738;
-  --border-bright:#2a3a52;
-  --text-primary: #dde3ed;
-  --text-secondary:#7a8799;
+  --bg-primary:   #f4f6f9;
+  --bg-surface:   #ffffff;
+  --bg-elevated:  #eef2f7;
+  --border:       #dde3ee;
+  --border-bright:#c8d3e6;
+  --text-primary: #0f172a;
+  --text-secondary:#64748b;
   --accent-amazon: #FF9900;
   --accent-amazon-dim: #cc7a00;
 
@@ -44,18 +44,18 @@ html, body, #root {
   background-color: var(--bg-primary);
   background-image:
     /* amber glow — top-left */
-    radial-gradient(ellipse 70% 45% at 15% 8%,  rgba(255,153,0,0.055) 0%, transparent 55%),
-    /* purple glow — bottom-right */
-    radial-gradient(ellipse 55% 40% at 85% 92%, rgba(99,102,241,0.05) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 45% at 15% 8%,  rgba(255,153,0,0.07) 0%, transparent 55%),
+    /* indigo glow — bottom-right */
+    radial-gradient(ellipse 55% 40% at 85% 92%, rgba(99,102,241,0.06) 0%, transparent 55%),
     /* fine grid — horizontal */
     repeating-linear-gradient(
       0deg, transparent, transparent 47px,
-      rgba(30,39,56,0.55) 47px, rgba(30,39,56,0.55) 48px
+      rgba(180,195,220,0.5) 47px, rgba(180,195,220,0.5) 48px
     ),
     /* fine grid — vertical */
     repeating-linear-gradient(
       90deg, transparent, transparent 47px,
-      rgba(30,39,56,0.55) 47px, rgba(30,39,56,0.55) 48px
+      rgba(180,195,220,0.5) 47px, rgba(180,195,220,0.5) 48px
     );
   color: var(--text-primary);
   font-family: var(--font-ui);
@@ -63,21 +63,7 @@ html, body, #root {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Scanline overlay — gives a subtle CRT/SCADA feel ── */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9997;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 3px,
-    rgba(0,0,0,0.04) 3px,
-    rgba(0,0,0,0.04) 4px
-  );
-}
+/* Scanline removed for light theme */
 
 /* ── Copyright watermark ──────────────────────────────────────────────────── */
 #root::after {
@@ -88,7 +74,7 @@ body::after {
   transform: translateX(-50%) rotate(0deg);
   font-size: 0.6rem;
   font-weight: 600;
-  color: rgba(138, 149, 168, 0.28);
+  color: rgba(100, 116, 139, 0.35);
   white-space: nowrap;
   pointer-events: none;
   z-index: 9999;
@@ -108,8 +94,8 @@ body::before {
     -45deg,
     transparent 0px,
     transparent 120px,
-    rgba(255,153,0,0.012) 120px,
-    rgba(255,153,0,0.012) 121px
+    rgba(255,153,0,0.025) 120px,
+    rgba(255,153,0,0.025) 121px
   );
 }
 
@@ -297,7 +283,7 @@ body::before {
 
 .wo-table th:hover {
   color: var(--text-primary);
-  background: #222831;
+  background: #e2e8f0;
 }
 
 .wo-table td {

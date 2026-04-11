@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Bell, Mail, MessageSquare, Smartphone, Shield, CheckCircle2, X, AlertTriangle, Clock, Zap } from 'lucide-react';
-import { CARRIERS, saveAlertSettings, loadAlertSettings } from '../../hooks/useAlerts.js';
+import { Bell, Mail, MessageSquare, Smartphone, Shield, CheckCircle2, X, AlertTriangle, Clock, Zap, Send, RefreshCw } from 'lucide-react';
+import { saveAlertSettings, loadAlertSettings, sendSMSPermissionRequest, loadSMSPerm } from '../../hooks/useAlerts.js';
 
 export default function AlertSettingsPanel({ onClose }) {
   const [s, setS] = useState(loadAlertSettings);
@@ -8,6 +8,9 @@ export default function AlertSettingsPanel({ onClose }) {
   const [pushStatus, setPushStatus] = useState(
     'Notification' in window ? Notification.permission : 'unsupported'
   );
+  const [permState, setPermState] = useState(() => loadSMSPerm());
+  const [permSending, setPermSending] = useState(false);
+  const [permError, setPermError] = useState('');
 
   function set(key, val) { setS((prev) => ({ ...prev, [key]: val })); }
 
@@ -16,6 +19,18 @@ export default function AlertSettingsPanel({ onClose }) {
     const result = await Notification.requestPermission();
     setPushStatus(result);
     if (result === 'granted') set('pushEnabled', true);
+  }
+
+  async function handleRequestPerm() {
+    setPermSending(true);
+    setPermError('');
+    const result = await sendSMSPermissionRequest(s.alertPhone, s.formspreeId);
+    setPermSending(false);
+    if (result.error) {
+      setPermError(result.error);
+    } else {
+      setPermState(loadSMSPerm());
+    }
   }
 
   function handleSave() {
@@ -34,7 +49,7 @@ export default function AlertSettingsPanel({ onClose }) {
       <div style={{
         position: 'relative', width: '520px', maxWidth: '95vw', maxHeight: '90vh',
         background: 'var(--bg-surface)', border: '1px solid var(--border)',
-        borderRadius: '14px', boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
+        borderRadius: '14px', boxShadow: '0 24px 80px rgba(0,0,0,0.18)',
         overflow: 'hidden', display: 'flex', flexDirection: 'column',
       }}>
         {/* Header */}
@@ -103,18 +118,87 @@ export default function AlertSettingsPanel({ onClose }) {
               <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>SMS Alerts</span>
             </div>
             <Toggle label="Send SMS text alerts" value={s.smsEnabled} onChange={(v) => set('smsEnabled', v)} />
+
             {s.smsEnabled && (
-              <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <Field label="Phone Number (digits only)" value={s.alertPhone} onChange={(v) => set('alertPhone', v)} placeholder="10-digit number e.g. 5551234567" />
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '5px' }}>Carrier</label>
-                  <select value={s.alertCarrier} onChange={(e) => set('alertCarrier', e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', borderRadius: '7px', background: 'var(--bg-elevated)', border: '1px solid var(--border)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
-                    {CARRIERS.map((c) => <option key={c.gateway} value={c.gateway}>{c.label} (@{c.gateway})</option>)}
-                  </select>
-                </div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', padding: '6px 10px', background: 'rgba(34,197,94,0.05)', borderRadius: '6px', border: '1px solid rgba(34,197,94,0.2)' }}>
-                  Sends via email-to-SMS gateway. No backend or Twilio account needed. Requires Formspree form ID above.
+              <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                {/* Phone number only — no carrier dropdown */}
+                <Field
+                  label="Phone Number"
+                  value={s.alertPhone}
+                  onChange={(v) => set('alertPhone', v)}
+                  placeholder="10-digit number e.g. 5551234567"
+                />
+
+                {/* Permission status badge */}
+                {permState && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px',
+                    padding: '9px 12px', borderRadius: '8px',
+                    background: permState.status === 'granted' ? 'rgba(34,197,94,0.08)' : permState.status === 'denied' ? 'rgba(239,68,68,0.08)' : 'rgba(255,153,0,0.08)',
+                    border: `1px solid ${permState.status === 'granted' ? 'rgba(34,197,94,0.3)' : permState.status === 'denied' ? 'rgba(239,68,68,0.3)' : 'rgba(255,153,0,0.3)'}`,
+                  }}>
+                    {permState.status === 'granted'
+                      ? <CheckCircle2 size={14} color="#22c55e" />
+                      : permState.status === 'denied'
+                      ? <X size={14} color="#ef4444" />
+                      : <RefreshCw size={14} color="#FF9900" style={{ animation: 'spin-slow 3s linear infinite' }} />
+                    }
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: permState.status === 'granted' ? '#22c55e' : permState.status === 'denied' ? '#ef4444' : '#FF9900' }}>
+                        {permState.status === 'granted' ? 'Permission Granted — alerts active'
+                          : permState.status === 'denied' ? 'Permission Denied — not sending'
+                          : 'Awaiting response — link sent'}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                        {permState.status === 'pending' ? 'Recipient needs to tap the link or reply GO' : `Phone: ${permState.phone}`}
+                      </div>
+                    </div>
+                    {permState.status !== 'granted' && (
+                      <button
+                        onClick={handleRequestPerm}
+                        disabled={permSending || !s.alertPhone || !s.formspreeId || s.formspreeId.includes('REPLACE')}
+                        style={{ padding: '4px 10px', borderRadius: '5px', background: 'none', border: '1px solid var(--border)', color: 'var(--text-secondary)', fontSize: '0.68rem', cursor: 'pointer' }}>
+                        Resend
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Request permission button — shown when no perm sent yet */}
+                {!permState && (
+                  <button
+                    onClick={handleRequestPerm}
+                    disabled={permSending || !s.alertPhone || !s.formspreeId || s.formspreeId.includes('REPLACE')}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
+                      padding: '10px', borderRadius: '8px',
+                      background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.35)',
+                      color: '#22c55e', fontSize: '0.8rem', fontWeight: 700,
+                      cursor: permSending ? 'not-allowed' : 'pointer',
+                      opacity: (!s.alertPhone || !s.formspreeId || s.formspreeId.includes('REPLACE')) ? 0.45 : 1,
+                    }}
+                  >
+                    {permSending
+                      ? <><RefreshCw size={14} style={{ animation: 'spin-slow 1s linear infinite' }} /> Sending…</>
+                      : <><Send size={14} /> Send Permission Request</>
+                    }
+                  </button>
+                )}
+
+                {permError && (
+                  <div style={{ fontSize: '0.72rem', color: '#ef4444', padding: '7px 10px', background: 'rgba(239,68,68,0.07)', borderRadius: '6px', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    {permError}
+                  </div>
+                )}
+
+                {/* How it works */}
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', padding: '8px 11px', background: 'rgba(34,197,94,0.04)', borderRadius: '7px', border: '1px solid rgba(34,197,94,0.18)', lineHeight: 1.6 }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>How it works: </strong>
+                  Tap <em>Send Permission Request</em> to text the number a quick opt-in link.
+                  The recipient taps <strong style={{ color: '#22c55e' }}>ALLOW</strong> (or replies <strong style={{ color: '#22c55e' }}>GO</strong>) to confirm,
+                  or <strong style={{ color: '#ef4444' }}>DENY</strong> (or replies <strong style={{ color: '#ef4444' }}>NO</strong>) to decline.
+                  Every alert includes a link back to the dashboard. No carrier selection needed.
                 </div>
               </div>
             )}

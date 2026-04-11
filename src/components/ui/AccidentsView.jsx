@@ -510,7 +510,7 @@ function MonthCard({ group }) {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.75rem', color: '#e2e8f0' }}
+                  contentStyle={{ background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--text-primary)' }}
                   formatter={(value, name) => [`${value} days`, name]}
                 />
               </PieChart>

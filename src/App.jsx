@@ -16,21 +16,26 @@ import AccidentsView from './components/ui/AccidentsView.jsx';
 import MEWPView from './components/ui/MEWPView.jsx';
 import SystemDashboard from './components/ui/SystemDashboard.jsx';
 import AlertSettingsPanel from './components/ui/AlertSettingsPanel.jsx';
+import TourModal from './components/ui/TourModal.jsx';
 import DowntimeView from './components/ui/DowntimeView.jsx';
 import PMSchedulerView from './components/ui/PMSchedulerView.jsx';
 import PartsInventoryView from './components/ui/PartsInventoryView.jsx';
 import ShiftHandoffView from './components/ui/ShiftHandoffView.jsx';
 import TechScorecardView from './components/ui/TechScorecardView.jsx';
 import MachineHealthView from './components/ui/MachineHealthView.jsx';
+import UserManagementView from './components/ui/UserManagementView.jsx';
+import LoginScreen from './components/auth/LoginScreen.jsx';
 import { ToastContainer, useToast } from './components/ui/Toast.jsx';
 import { useWorkOrders } from './hooks/useWorkOrders.js';
-import { useAlerts, loadAlertSettings } from './hooks/useAlerts.js';
+import { useAlerts, loadAlertSettings, saveAlertSettings, loadSMSPerm, saveSMSPerm } from './hooks/useAlerts.js';
 import { useFilters } from './hooks/useFilters.js';
 import { useMachineSpecs } from './hooks/useMachineSpecs.js';
+import { useAuth, ROLE_ACCESS } from './hooks/useAuth.js';
 import { exportToCSV } from './utils/formatters.js';
-import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity, Monitor } from 'lucide-react';
+import { Plus, Download, TableIcon, LayoutGrid, BarChart2, Zap, ShieldCheck, History, FlaskConical, TriangleAlert, Forklift, DollarSign, Wrench, Package, ClipboardList, User, Activity, Monitor, Users } from 'lucide-react';
 
 export default function App() {
+  const { currentUser, users, login, logout, addUser, updateUser, deleteUser } = useAuth();
   const { workOrders, dbLoading, connStatus, lastRefreshed, manualRefresh, createWorkOrder, updateWorkOrder, addNote, deleteWorkOrder, bulkUpdate, resetToMockData } = useWorkOrders();
   const { upsertSpec, getSpec } = useMachineSpecs();
   const {
@@ -49,8 +54,26 @@ export default function App() {
   const [notifications, setNotifications] = useState([]);
   const [showAlertSettings, setShowAlertSettings] = useState(false);
   const [alertSettings, setAlertSettings] = useState(loadAlertSettings);
+  const [showTour, setShowTour] = useState(() => !localStorage.getItem('mts_tour_done'));
 
   useAlerts(workOrders, alertSettings);
+
+  // Handle SMS permission token from URL (?sms_allow=TOKEN or ?sms_deny=TOKEN)
+  useEffect(() => {
+    const params     = new URLSearchParams(window.location.search);
+    const allowToken = params.get('sms_allow');
+    const denyToken  = params.get('sms_deny');
+    if (!allowToken && !denyToken) return;
+    const perm = loadSMSPerm();
+    if (perm && (perm.token === allowToken || perm.token === denyToken)) {
+      const granted = perm.token === allowToken;
+      saveSMSPerm({ ...perm, status: granted ? 'granted' : 'denied', respondedAt: Date.now() });
+      const current = loadAlertSettings();
+      saveAlertSettings({ ...current, smsEnabled: granted });
+      setAlertSettings((prev) => ({ ...prev, smsEnabled: granted }));
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
   // Keep selectedWO in sync with latest data
   useEffect(() => {
@@ -119,8 +142,20 @@ export default function App() {
     }
   }
 
-  const VIEW_ICONS = { dashboard: Monitor, table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical, accidents: TriangleAlert, mewp: Forklift, downtime: DollarSign, pm: Wrench, parts: Package, handoff: ClipboardList, scorecard: User, health: Activity };
-  const VIEW_LABELS = { dashboard: 'Dashboard', table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects', accidents: 'Accidents', mewp: 'MEWP', downtime: 'Downtime', pm: 'PM Schedule', parts: 'Parts', handoff: 'Handoff', scorecard: 'Scorecards', health: 'Health' };
+  const VIEW_ICONS  = { dashboard: Monitor, table: TableIcon, board: LayoutGrid, charts: BarChart2, wiring: Zap, safety: ShieldCheck, history: History, defects: FlaskConical, accidents: TriangleAlert, mewp: Forklift, downtime: DollarSign, pm: Wrench, parts: Package, handoff: ClipboardList, scorecard: User, health: Activity, users: Users };
+  const VIEW_LABELS = { dashboard: 'Dashboard', table: 'Table', board: 'Board', charts: 'Analytics', wiring: 'Wiring', safety: 'Safety', history: 'History', defects: 'Defects', accidents: 'Accidents', mewp: 'MEWP', downtime: 'Downtime', pm: 'PM Schedule', parts: 'Parts', handoff: 'Handoff', scorecard: 'Scorecards', health: 'Health', users: 'User Management' };
+
+  // Gate: redirect to dashboard if current view is not allowed for this role
+  const role = currentUser?.role || 'operator';
+  const allowed = ROLE_ACCESS[role] || [];
+  useEffect(() => {
+    if (!allowed.includes(activeView)) setActiveView('dashboard');
+  }, [role]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show login screen if not authenticated
+  if (!currentUser) {
+    return <LoginScreen onLogin={login} />;
+  }
 
   return (
     <div
@@ -135,7 +170,7 @@ export default function App() {
     >
       {/* Behind-content circular MTS watermark */}
       <svg
-        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 520, height: 520, pointerEvents: 'none', zIndex: 0, userSelect: 'none', opacity: 0.13 }}
+        style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 520, height: 520, pointerEvents: 'none', zIndex: 0, userSelect: 'none', opacity: 0.07 }}
         viewBox="0 0 520 520"
         aria-hidden="true"
       >
@@ -158,6 +193,9 @@ export default function App() {
         lastRefreshed={lastRefreshed}
         onManualRefresh={manualRefresh}
         onOpenAlerts={() => setShowAlertSettings(true)}
+        onOpenTour={() => setShowTour(true)}
+        currentUser={currentUser}
+        onLogout={logout}
       />
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -168,6 +206,7 @@ export default function App() {
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
           sidebarMode={sidebarMode}
+          currentUser={currentUser}
         />
 
         <main
@@ -307,6 +346,16 @@ export default function App() {
           {activeView === 'health' && (
             <MachineHealthView workOrders={workOrders} />
           )}
+
+          {activeView === 'users' && role === 'admin' && (
+            <UserManagementView
+              users={users}
+              currentUser={currentUser}
+              onAdd={addUser}
+              onUpdate={updateUser}
+              onDelete={deleteUser}
+            />
+          )}
         </main>
       </div>
 
@@ -339,6 +388,16 @@ export default function App() {
             setAlertSettings(loadAlertSettings());
             setShowAlertSettings(false);
           }}
+        />
+      )}
+
+      {showTour && (
+        <TourModal
+          onClose={() => {
+            localStorage.setItem('mts_tour_done', '1');
+            setShowTour(false);
+          }}
+          onNavigate={setActiveView}
         />
       )}
 

@@ -7,10 +7,10 @@ import { AlertTriangle, CheckCircle2, Clock, Activity, TrendingUp, TrendingDown,
 import ActivityFeed from './ActivityFeed.jsx';
 
 const TOOLTIP_STYLE = {
-  contentStyle: { background: '#1a1d2b', border: '1px solid #2a3040', borderRadius: '8px', fontSize: '0.75rem', color: '#e2e8f0' },
-  itemStyle: { color: '#e2e8f0' },
-  labelStyle: { color: '#8a95a8', marginBottom: '4px' },
-  cursor: { fill: 'rgba(255,255,255,0.03)' },
+  contentStyle: { background: '#ffffff', border: '1px solid #dde3ee', borderRadius: '8px', fontSize: '0.75rem', color: '#0f172a' },
+  itemStyle: { color: '#0f172a' },
+  labelStyle: { color: '#64748b', marginBottom: '4px' },
+  cursor: { fill: 'rgba(0,0,0,0.04)' },
 };
 
 function KPICard({ icon: Icon, label, value, sub, color, trend, trendVal }) {

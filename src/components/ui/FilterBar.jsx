@@ -48,7 +48,7 @@ function MultiSelect({ label, options, value, onChange }) {
               borderRadius: '8px',
               padding: '6px',
               minWidth: '160px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
             }}
             className="slide-in-up"
             role="listbox"
@@ -337,7 +337,7 @@ export default function FilterBar({
                   borderRadius: '8px',
                   padding: '10px',
                   minWidth: '220px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.1)',
                 }}
                 className="slide-in-up"
               >

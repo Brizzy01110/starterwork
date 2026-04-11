@@ -170,10 +170,10 @@ export default function MachineHealthView({ workOrders = [] }) {
                 <div style={{ flex: 1, height: '110px' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <RadarChart data={radarData} margin={{ top: 0, right: 10, bottom: 0, left: 10 }}>
-                      <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                      <PolarAngleAxis dataKey="axis" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 8 }} />
+                      <PolarGrid stroke="rgba(0,0,0,0.1)" />
+                      <PolarAngleAxis dataKey="axis" tick={{ fill: '#64748b', fontSize: 8 }} />
                       <Radar dataKey="value" stroke={color} fill={color} fillOpacity={0.15} />
-                      <Tooltip contentStyle={{ background: '#1a1d2b', border: '1px solid #2a3040', borderRadius: '6px', fontSize: '0.72rem' }} />
+                      <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid #dde3ee', borderRadius: '6px', fontSize: '0.72rem', color: '#0f172a' }} />
                     </RadarChart>
                   </ResponsiveContainer>
                 </div>

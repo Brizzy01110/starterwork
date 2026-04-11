@@ -75,7 +75,7 @@ export default function Modal({ title, onClose, children, size = 'md' }) {
           display: 'flex',
           flexDirection: 'column',
           outline: 'none',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.6)',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.15)',
         }}
         className="slide-in-up"
       >

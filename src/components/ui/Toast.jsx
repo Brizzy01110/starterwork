@@ -36,7 +36,7 @@ export function Toast({ id, message, type = 'info', onDismiss }) {
         borderLeft: `3px solid ${COLORS[type]}`,
         borderRadius: '8px',
         padding: '12px 14px',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
         minWidth: '260px',
         maxWidth: '360px',
         color: 'var(--text-primary)',

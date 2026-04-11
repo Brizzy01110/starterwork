@@ -42,7 +42,7 @@ const TOOLTIP_STYLE = {
   },
   itemStyle: { color: 'var(--text-primary)' },
   labelStyle: { color: 'var(--text-secondary)', marginBottom: '4px' },
-  cursor: { fill: 'rgba(255,255,255,0.03)' },
+  cursor: { fill: 'rgba(0,0,0,0.04)' },
 };
 
 function ChartTitle({ title, subtitle }) {

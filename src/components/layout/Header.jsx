@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Zap, Menu, X, Bell, MessageSquare, HelpCircle, Send, Loader, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Zap, Menu, X, Bell, MessageSquare, HelpCircle, Send, Loader, RefreshCw, Wifi, WifiOff, Compass, LogOut } from 'lucide-react';
+import { ROLE_COLORS, ROLE_LABELS } from '../../hooks/useAuth.js';
 
 // ─── Formspree endpoint ───────────────────────────────────────────────────────
 // 1. Go to https://formspree.io  →  sign up (free)
@@ -16,7 +17,7 @@ function timeAgo(ts) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-export default function Header({ onMenuToggle, menuOpen, notifications = [], onClearNotifications, sidebarMode = 'overview', onModeChange, connStatus = 'connecting', lastRefreshed = null, onManualRefresh, onOpenAlerts }) {
+export default function Header({ onMenuToggle, menuOpen, notifications = [], onClearNotifications, sidebarMode = 'overview', onModeChange, connStatus = 'connecting', lastRefreshed = null, onManualRefresh, onOpenAlerts, onOpenTour, currentUser, onLogout }) {
   const [open, setOpen] = useState(false);
   const [itOpen, setItOpen] = useState(false);
   const [itName, setItName] = useState('');
@@ -221,6 +222,25 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Tour button */}
+        <button
+          onClick={onOpenTour}
+          title="Take a tour"
+          style={{
+            display: 'flex', alignItems: 'center', gap: '5px',
+            padding: '4px 10px', borderRadius: '5px',
+            background: 'rgba(255,153,0,0.1)', border: '1px solid rgba(255,153,0,0.25)',
+            color: '#FF9900', fontSize: '0.65rem', fontWeight: 700,
+            cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase',
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,153,0,0.2)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,153,0,0.1)'; }}
+        >
+          <Compass size={11} />
+          <span className="header-conn-label">Tour</span>
+        </button>
+
         {/* Alert settings button */}
         <button
           onClick={onOpenAlerts}
@@ -299,7 +319,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
                 position: 'absolute', top: 'calc(100% + 10px)', right: 0,
                 width: '320px', background: 'var(--bg-surface)',
                 border: '1px solid var(--border)', borderRadius: '10px',
-                boxShadow: '0 12px 36px rgba(0,0,0,0.5)', zIndex: 49, overflow: 'hidden',
+                boxShadow: '0 12px 36px rgba(0,0,0,0.12)', zIndex: 49, overflow: 'hidden',
               }}>
                 <div style={{
                   padding: '10px 14px', borderBottom: '1px solid var(--border)',
@@ -321,7 +341,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
                   <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
                     {notifications.map((n) => (
                       <div key={n.id} style={{
-                        padding: '10px 14px', borderBottom: '1px solid rgba(42,48,64,0.5)',
+                        padding: '10px 14px', borderBottom: '1px solid var(--border)',
                         background: n.read ? 'none' : 'rgba(255,153,0,0.04)',
                         display: 'flex', gap: '10px', alignItems: 'flex-start',
                       }}>
@@ -353,6 +373,36 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
           )}
         </div>
 
+        {/* User badge + logout */}
+        {currentUser && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '7px',
+              padding: '4px 10px', borderRadius: '8px',
+              background: `${ROLE_COLORS[currentUser.role]}10`,
+              border: `1px solid ${ROLE_COLORS[currentUser.role]}33`,
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, textAlign: 'right' }}>
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-primary)' }} className="header-conn-label">
+                  {currentUser.name}
+                </span>
+                <span style={{ fontSize: '0.58rem', fontWeight: 700, color: ROLE_COLORS[currentUser.role], textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '2px' }}>
+                  {ROLE_LABELS[currentUser.role]}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              title="Sign out"
+              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-secondary)', cursor: 'pointer', padding: '5px', display: 'flex', transition: 'all 0.15s' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Mobile menu toggle */}
         <button
           onClick={onMenuToggle}
@@ -372,7 +422,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
             position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
             width: '440px', maxWidth: '94vw',
             background: 'var(--bg-surface)', border: '1px solid var(--border)',
-            borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.65)',
+            borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
             zIndex: 201, overflow: 'hidden',
           }}>
             {/* Modal header */}
