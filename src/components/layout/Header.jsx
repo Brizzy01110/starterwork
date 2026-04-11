@@ -117,33 +117,38 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
 
-          {/* Main title + IT button */}
+          {/* Main title + IT button (IT hidden in app mode) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
               <span className="header-logo-title" style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>MT Services</span>
-              <span className="header-subtitle" style={{ fontSize: '0.55rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Active Work Orders · System Status · Downtime Alerts</span>
+              {!isInStandaloneMode && (
+                <span className="header-subtitle" style={{ fontSize: '0.55rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Active Work Orders · System Status · Downtime Alerts</span>
+              )}
             </div>
-            <button
-              onClick={() => setItOpen(true)}
-              title="Submit an IT support ticket"
-              className="header-it-support"
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                padding: '3px 8px', borderRadius: '5px',
-                background: 'rgba(129,140,248,0.12)', border: '1px solid rgba(129,140,248,0.3)',
-                color: '#818cf8', fontSize: '0.65rem', fontWeight: 700,
-                cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase',
-                transition: 'all 0.15s',
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(129,140,248,0.22)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(129,140,248,0.12)'; }}
-            >
-              <HelpCircle size={11} />
-              IT
-            </button>
+            {!isInStandaloneMode && (
+              <button
+                onClick={() => setItOpen(true)}
+                title="Submit an IT support ticket"
+                className="header-it-support"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  padding: '3px 8px', borderRadius: '5px',
+                  background: 'rgba(129,140,248,0.12)', border: '1px solid rgba(129,140,248,0.3)',
+                  color: '#818cf8', fontSize: '0.65rem', fontWeight: 700,
+                  cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(129,140,248,0.22)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(129,140,248,0.12)'; }}
+              >
+                <HelpCircle size={11} />
+                IT
+              </button>
+            )}
           </div>
 
-          {/* Subtitle group */}
+          {/* Mode switcher — web only, hidden in app mode */}
+          {!isInStandaloneMode && (
           <div className="header-mode-group" style={{ display: 'flex', alignItems: 'center', gap: '0px', paddingLeft: '6px', borderLeft: '1px solid var(--border)' }}>
 
             <button
@@ -245,6 +250,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
             </button>
 
           </div>
+          )}
         </div>
       </div>
 
