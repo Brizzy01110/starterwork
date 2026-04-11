@@ -470,7 +470,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         {/* Mobile menu toggle */}
         <button
           onClick={onMenuToggle}
-          style={{ display: 'none', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
+          style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px' }}
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           className="mobile-menu-btn"
         >

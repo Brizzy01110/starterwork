@@ -232,6 +232,9 @@ body::before {
   outline-offset: 2px;
 }
 
+/* Hide hamburger on desktop */
+.mobile-menu-btn { display: none; }
+
 /* ── Global responsive helpers ── */
 @media (max-width: 768px) {
   .sys-panel { border-radius: 8px; }
@@ -241,8 +244,8 @@ body::before {
   .flex-row-mobile { flex-direction: column !important; }
   input, select, textarea { font-size: 16px !important; }
 
-  /* Show hamburger menu button */
-  .mobile-menu-btn { display: flex !important; }
+  /* Show hamburger menu button on mobile */
+  .mobile-menu-btn { display: flex !important; align-items: center; }
 
   /* Tighten main content padding */
   .main-content { padding: 10px !important; gap: 10px !important; }
