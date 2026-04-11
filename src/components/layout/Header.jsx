@@ -126,6 +126,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
             <button
               onClick={() => setItOpen(true)}
               title="Submit an IT support ticket"
+              className="header-it-support"
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 padding: '3px 8px', borderRadius: '5px',
@@ -379,8 +380,8 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 48 }} onClick={() => setOpen(false)} />
               <div style={{
-                position: 'absolute', top: 'calc(100% + 10px)', right: 0,
-                width: '320px', background: 'var(--bg-surface)',
+                position: 'fixed', top: '54px', right: '8px',
+                width: 'min(320px, calc(100vw - 16px))', background: 'var(--bg-surface)',
                 border: '1px solid var(--border)', borderRadius: '10px',
                 boxShadow: '0 12px 36px rgba(0,0,0,0.12)', zIndex: 49, overflow: 'hidden',
               }}>
@@ -742,12 +743,18 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         }
 
         @media (max-width: 640px) {
-          .header-mode-group { display: none !important; }
-          .header-subtitle   { display: none !important; }
-          .header-conn-label { display: none !important; }
+          .header-mode-group  { display: none !important; }
+          .header-subtitle    { display: none !important; }
+          .header-conn-label  { display: none !important; }
+          .header-it-support  { display: none !important; }
         }
         @media (max-width: 480px) {
-          .header-it-btn span { display: none; }
+          .header-install-btn { display: none !important; }
+          .header-tour-btn    { display: none !important; }
+          .header-it-btn      { display: none !important; }
+          .header-conn-wrap   { display: none !important; }
+          .header-user-badge  { display: none !important; }
+          .header-logout-btn  { display: none !important; }
         }
         @media (max-width: 430px) {
           header { padding: 0 10px !important; }
