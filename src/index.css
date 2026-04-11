@@ -255,10 +255,38 @@ body::before {
   img, svg { max-width: 100%; height: auto; }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   body { font-size: 14px; }
   .stat-card-value { font-size: 1.4rem !important; }
   .main-content { padding: 8px !important; gap: 8px !important; }
+
+  /* ── Force ALL inline-style multi-column grids to single column ── */
+  /* Catches '2fr 1fr', '1fr 1fr', '3fr 1fr', etc. */
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns: 2fr 1fr"],
+  [style*="grid-template-columns: 3fr 1fr"],
+  [style*="grid-template-columns: 1fr 2fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Fix auto-fill/auto-fit grids with large minimums */
+  [style*="minmax(320px"],
+  [style*="minmax(340px"],
+  [style*="minmax(300px"],
+  [style*="minmax(280px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Remove column spans — they break single-column grids */
+  [style*="grid-column: span"],
+  [style*="gridColumn"] {
+    grid-column: unset !important;
+  }
+
+  /* Prevent 5-column score grids from overflowing */
+  [style*="repeat(5"] {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
 
   /* Hide secondary header actions — keep bell + hamburger only */
   .header-install-btn { display: none !important; }
@@ -267,6 +295,22 @@ body::before {
   .header-conn-wrap   { display: none !important; }
   .header-user-badge  { display: none !important; }
   .header-logout-btn  { display: none !important; }
+
+  /* Make tables horizontally scrollable instead of overflowing */
+  .sys-panel { overflow-x: auto !important; }
+
+  /* Stat cards minimum size */
+  [style*="minmax(170px"],
+  [style*="minmax(160px"] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Max width overrides for detail panels */
+  [style*="maxWidth: '900px'"],
+  [style*="max-width: 900px"],
+  [style*="maxWidth: '800px'"] {
+    max-width: 100% !important;
+  }
 }
 
 /* Table styles */

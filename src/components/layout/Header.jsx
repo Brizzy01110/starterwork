@@ -120,7 +120,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
           {/* Main title + IT button */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-              <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>MT Services</span>
+              <span className="header-logo-title" style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>MT Services</span>
               <span className="header-subtitle" style={{ fontSize: '0.55rem', fontWeight: 600, color: 'var(--text-secondary)', letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: '2px' }}>Active Work Orders · System Status · Downtime Alerts</span>
             </div>
             <button
@@ -735,7 +735,6 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Hide mode switcher group on very small screens */
         @media (max-width: 640px) {
           .header-mode-group { display: none !important; }
           .header-subtitle { display: none !important; }
@@ -743,6 +742,11 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         }
         @media (max-width: 480px) {
           .header-it-btn span { display: none; }
+        }
+        /* Portrait phone — shrink logo text, prevent header overflow */
+        @media (max-width: 430px) {
+          header { padding: 0 10px !important; }
+          .header-logo-title { font-size: 0.88rem !important; }
         }
       `}</style>
     </header>
