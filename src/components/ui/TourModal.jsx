@@ -185,6 +185,16 @@ const STEPS = [
     trail: 'up',
   },
   {
+    id: 'install',
+    color: '#22c55e',
+    title: 'Install as an App',
+    desc: 'MT Services is a PWA — installable on any device. On Android or Windows, click the green "Install App" button in the header. On iPhone, tap Share → "Add to Home Screen". Once installed, it runs fullscreen like a native app with no browser bar.',
+    view: null,
+    spotlight: { top: '7px', right: '152px', width: '108px', height: '38px' },
+    bubble: BUBBLE_BELOW_ALERTS,
+    trail: 'up',
+  },
+  {
     id: 'finish',
     color: '#FF9900',
     title: "You're all set!",

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Zap, Menu, X, Bell, MessageSquare, HelpCircle, Send, Loader, RefreshCw, Wifi, WifiOff, Compass, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Zap, Menu, X, Bell, MessageSquare, HelpCircle, Send, Loader, RefreshCw, Wifi, WifiOff, Compass, LogOut, Download } from 'lucide-react';
 import { ROLE_COLORS, ROLE_LABELS } from '../../hooks/useAuth.js';
 
 // ─── Formspree endpoint ───────────────────────────────────────────────────────
@@ -20,6 +20,25 @@ function timeAgo(ts) {
 export default function Header({ onMenuToggle, menuOpen, notifications = [], onClearNotifications, sidebarMode = 'overview', onModeChange, connStatus = 'connecting', lastRefreshed = null, onManualRefresh, onOpenAlerts, onOpenTour, currentUser, onLogout }) {
   const [open, setOpen] = useState(false);
   const [itOpen, setItOpen] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    function onBeforeInstall(e) {
+      e.preventDefault();
+      setInstallPrompt(e);
+    }
+    function onAppInstalled() {
+      setInstalled(true);
+      setInstallPrompt(null);
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstall);
+    window.addEventListener('appinstalled', onAppInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
+      window.removeEventListener('appinstalled', onAppInstalled);
+    };
+  }, []);
   const [itName, setItName] = useState('');
   const [itTitle, setItTitle] = useState('');
   const [itDesc, setItDesc] = useState('');
@@ -222,6 +241,33 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Install App button — shown when browser supports PWA install */}
+        {installPrompt && !installed && (
+          <button
+            id="pwa-install-btn"
+            onClick={async () => {
+              installPrompt.prompt();
+              const { outcome } = await installPrompt.userChoice;
+              if (outcome === 'accepted') setInstalled(true);
+              setInstallPrompt(null);
+            }}
+            title="Install MT Services as an app"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '5px',
+              padding: '4px 10px', borderRadius: '5px',
+              background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.3)',
+              color: '#22c55e', fontSize: '0.65rem', fontWeight: 700,
+              cursor: 'pointer', letterSpacing: '0.04em', textTransform: 'uppercase',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.2)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(34,197,94,0.1)'; }}
+          >
+            <Download size={11} />
+            <span className="header-conn-label">Install App</span>
+          </button>
+        )}
+
         {/* Tour button */}
         <button
           onClick={onOpenTour}
