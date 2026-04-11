@@ -20,8 +20,16 @@ function timeAgo(ts) {
 export default function Header({ onMenuToggle, menuOpen, notifications = [], onClearNotifications, sidebarMode = 'overview', onModeChange, connStatus = 'connecting', lastRefreshed = null, onManualRefresh, onOpenAlerts, onOpenTour, currentUser, onLogout }) {
   const [open, setOpen] = useState(false);
   const [itOpen, setItOpen] = useState(false);
+  const [installOpen, setInstallOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
+
+  // Detect platform for tailored instructions
+  const ua = navigator.userAgent;
+  const isIOS     = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+  const isAndroid = /Android/.test(ua);
+  const isSafari  = /Safari/.test(ua) && !/Chrome/.test(ua);
+  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
   useEffect(() => {
     function onBeforeInstall(e) {
@@ -241,15 +249,21 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
 
       {/* Right side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        {/* Install App button — shown when browser supports PWA install */}
-        {installPrompt && !installed && (
+        {/* Install App — always visible unless already running as installed app */}
+        {!isInStandaloneMode && !installed && (
           <button
             id="pwa-install-btn"
             onClick={async () => {
-              installPrompt.prompt();
-              const { outcome } = await installPrompt.userChoice;
-              if (outcome === 'accepted') setInstalled(true);
-              setInstallPrompt(null);
+              if (installPrompt) {
+                // Android / Chrome / Edge — native prompt available
+                installPrompt.prompt();
+                const { outcome } = await installPrompt.userChoice;
+                if (outcome === 'accepted') setInstalled(true);
+                setInstallPrompt(null);
+              } else {
+                // iOS or fallback — show instructions modal
+                setInstallOpen(true);
+              }
             }}
             title="Install MT Services as an app"
             style={{
@@ -459,6 +473,103 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
           {menuOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
+
+      {/* ── Install App Modal ── */}
+      {installOpen && (
+        <>
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200 }} onClick={() => setInstallOpen(false)} />
+          <div style={{
+            position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+            width: '420px', maxWidth: '94vw',
+            background: 'var(--bg-surface)', border: '1px solid rgba(34,197,94,0.3)',
+            borderRadius: '14px', boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
+            zIndex: 201, overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'rgba(34,197,94,0.06)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                <div style={{ width: 34, height: 34, borderRadius: '9px', background: '#22c55e', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Download size={17} color="#000" />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>Install MT Services</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: '1px' }}>Add to your home screen — works like a native app</div>
+                </div>
+              </div>
+              <button onClick={() => setInstallOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+              {/* iOS / Safari */}
+              <div style={{ borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(0,122,255,0.06)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>🍎</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>iPhone / iPad (Safari)</span>
+                </div>
+                <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { n: 1, text: 'Open this page in Safari (not Chrome)' },
+                    { n: 2, text: 'Tap the Share button at the bottom of the screen  ↑' },
+                    { n: 3, text: 'Scroll down and tap "Add to Home Screen"' },
+                    { n: 4, text: 'Tap "Add" in the top-right corner' },
+                  ].map(({ n, text }) => (
+                    <div key={n} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(0,122,255,0.12)', border: '1px solid rgba(0,122,255,0.25)', color: '#007AFF', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</div>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', lineHeight: 1.55, paddingTop: '2px' }}>{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Android */}
+              <div style={{ borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(52,168,83,0.06)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>🤖</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>Android (Chrome)</span>
+                </div>
+                <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { n: 1, text: 'Open this page in Chrome' },
+                    { n: 2, text: 'Tap the three-dot menu  ⋮  in the top-right' },
+                    { n: 3, text: 'Tap "Add to Home screen"' },
+                    { n: 4, text: 'Tap "Add" to confirm' },
+                  ].map(({ n, text }) => (
+                    <div key={n} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(52,168,83,0.12)', border: '1px solid rgba(52,168,83,0.25)', color: '#34A853', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</div>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', lineHeight: 1.55, paddingTop: '2px' }}>{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Windows */}
+              <div style={{ borderRadius: '10px', border: '1px solid var(--border)', overflow: 'hidden' }}>
+                <div style={{ padding: '10px 14px', background: 'rgba(0,120,212,0.06)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1.1rem' }}>🪟</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>Windows (Chrome or Edge)</span>
+                </div>
+                <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {[
+                    { n: 1, text: 'Open this page in Chrome or Edge' },
+                    { n: 2, text: 'Click the install icon  ⊕  in the address bar (right side)' },
+                    { n: 3, text: 'Click "Install" in the popup' },
+                    { n: 4, text: 'MT Services opens as its own desktop window' },
+                  ].map(({ n, text }) => (
+                    <div key={n} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'rgba(0,120,212,0.12)', border: '1px solid rgba(0,120,212,0.25)', color: '#0078D4', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</div>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-primary)', lineHeight: 1.55, paddingTop: '2px' }}>{text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── IT Support Request Modal ── */}
       {itOpen && (
