@@ -735,15 +735,20 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+        /* Hamburger: hidden on desktop, visible on mobile */
+        .mobile-menu-btn { display: none !important; }
+        @media (max-width: 768px) {
+          .mobile-menu-btn { display: flex !important; align-items: center; }
+        }
+
         @media (max-width: 640px) {
           .header-mode-group { display: none !important; }
-          .header-subtitle { display: none !important; }
+          .header-subtitle   { display: none !important; }
           .header-conn-label { display: none !important; }
         }
         @media (max-width: 480px) {
           .header-it-btn span { display: none; }
         }
-        /* Portrait phone — shrink logo text, prevent header overflow */
         @media (max-width: 430px) {
           header { padding: 0 10px !important; }
           .header-logo-title { font-size: 0.88rem !important; }
