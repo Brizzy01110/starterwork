@@ -253,6 +253,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         {!isInStandaloneMode && !installed && (
           <button
             id="pwa-install-btn"
+            className="header-install-btn"
             onClick={async () => {
               if (installPrompt) {
                 // Android / Chrome / Edge — native prompt available
@@ -286,6 +287,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         <button
           onClick={onOpenTour}
           title="Take a tour"
+          className="header-tour-btn"
           style={{
             display: 'flex', alignItems: 'center', gap: '5px',
             padding: '4px 10px', borderRadius: '5px',
@@ -305,6 +307,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         <button
           onClick={onOpenAlerts}
           title="Alert settings"
+          className="header-it-btn"
           style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '4px', display: 'flex', borderRadius: '6px' }}
           onMouseEnter={(e) => { e.currentTarget.style.color = '#FF9900'; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; }}
@@ -313,7 +316,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
         </button>
 
         {/* Real-time connection status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div className="header-conn-wrap" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <button
             onClick={onManualRefresh}
             title="Refresh now"
@@ -435,7 +438,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
 
         {/* User badge + logout */}
         {currentUser && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div className="header-user-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{
               display: 'flex', alignItems: 'center', gap: '7px',
               padding: '4px 10px', borderRadius: '8px',
@@ -454,6 +457,7 @@ export default function Header({ onMenuToggle, menuOpen, notifications = [], onC
             <button
               onClick={onLogout}
               title="Sign out"
+              className="header-logout-btn"
               style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-secondary)', cursor: 'pointer', padding: '5px', display: 'flex', transition: 'all 0.15s' }}
               onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.4)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--border)'; }}

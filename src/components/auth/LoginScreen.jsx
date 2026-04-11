@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Zap, Eye, EyeOff, LogIn } from 'lucide-react';
+import { resetUsersToDefault } from '../../hooks/useAuth.js';
 
 export default function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -142,6 +143,22 @@ export default function LoginScreen({ onLogin }) {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+
+        {/* Can't log in? Reset link */}
+        <div style={{ marginTop: '16px', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Reset all user accounts to defaults?\n\nThis will restore:\n• admin / Admin@123\n• manager / Mgr@123\n• operator / Op@123')) {
+                resetUsersToDefault();
+                window.location.reload();
+              }
+            }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '0.7rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+          >
+            Can't log in? Reset accounts to defaults
+          </button>
+        </div>
 
       </div>
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 const USERS_KEY   = 'mts_users';
 const SESSION_KEY = 'mts_session';
+const SCHEMA_VER  = 'v2'; // bump this whenever DEFAULT_USERS changes
 
 // ── Role access map ────────────────────────────────────────────────────────────
 // Controls which sidebar views are reachable per role
@@ -24,11 +25,29 @@ const DEFAULT_USERS = [
 // ── Persistence helpers ────────────────────────────────────────────────────────
 function loadUsers() {
   try {
-    const raw = localStorage.getItem(USERS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
-  return DEFAULT_USERS;
+    const raw     = localStorage.getItem(USERS_KEY);
+    const ver     = localStorage.getItem(USERS_KEY + '_ver');
+    const parsed  = raw ? JSON.parse(raw) : null;
+
+    // Re-seed if: nothing stored, schema version mismatch, or data is malformed
+    const valid = Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.username;
+    if (!valid || ver !== SCHEMA_VER) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+      localStorage.setItem(USERS_KEY + '_ver', SCHEMA_VER);
+      return DEFAULT_USERS;
+    }
+    return parsed;
+  } catch {
+    localStorage.setItem(USERS_KEY, JSON.stringify(DEFAULT_USERS));
+    localStorage.setItem(USERS_KEY + '_ver', SCHEMA_VER);
+    return DEFAULT_USERS;
+  }
+}
+
+export function resetUsersToDefault() {
+  localStorage.removeItem(USERS_KEY);
+  localStorage.removeItem(USERS_KEY + '_ver');
+  localStorage.removeItem(SESSION_KEY);
 }
 
 function saveUsers(list) {

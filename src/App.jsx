@@ -210,9 +210,11 @@ export default function App() {
         />
 
         <main
+          className="main-content"
           style={{
             flex: 1,
             overflowY: 'auto',
+            overflowX: 'hidden',
             padding: '16px',
             display: 'flex',
             flexDirection: 'column',
