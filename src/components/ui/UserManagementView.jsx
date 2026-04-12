@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, X, Eye, EyeOff, ShieldCheck, UserCheck, Wrench } from 'lucide-react';
-import { ROLE_COLORS, ROLE_LABELS, ROLE_ACCESS } from '../../hooks/useAuth.js';
+import { Plus, Edit2, Trash2, X, Eye, EyeOff, ShieldCheck, UserCheck, Wrench, AlertTriangle } from 'lucide-react';
+import { ROLE_COLORS, ROLE_LABELS, ROLE_ACCESS, resetUsersToDefault } from '../../hooks/useAuth.js';
 
 const BLANK = { username: '', password: '', name: '', role: 'operator', position: '' };
 
@@ -281,6 +281,35 @@ export default function UserManagementView({ users, currentUser, onAdd, onUpdate
           </tbody>
         </table>
       </div>
+      {/* ── Danger Zone ── */}
+      <div style={{ background: 'var(--bg-surface)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '16px 18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+          <AlertTriangle size={14} color="#ef4444" />
+          <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Danger Zone</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>Reset all accounts to defaults</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+              Restores admin, manager, and operator with default passwords. All custom accounts will be removed.
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (window.confirm('Reset all user accounts to defaults?\n\nThis will restore:\n• admin / Admin@123\n• manager / Mgr@123\n• operator / Op@123\n\nAll custom accounts will be deleted.')) {
+                resetUsersToDefault();
+                window.location.reload();
+              }
+            }}
+            style={{ padding: '7px 16px', borderRadius: '7px', background: 'none', border: '1px solid rgba(239,68,68,0.4)', color: '#ef4444', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+          >
+            Reset to Defaults
+          </button>
+        </div>
+      </div>
+
     </div>
   );
 }
